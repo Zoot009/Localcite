@@ -1,0 +1,534 @@
+# One niche per line. Each is searched as "<niche> in <city>" and becomes a page.
+# Lines starting with # are ignored. Put your most valuable niches first: LIMIT=n scrapes only the first n.
+
+# Home services
+plumber
+electrician
+HVAC contractor
+air conditioning repair
+furnace repair
+roofing contractor
+house painter
+handyman
+carpenter
+locksmith
+pest control
+house cleaning service
+carpet cleaning
+window cleaning
+gutter cleaning
+pressure washing
+chimney sweep
+appliance repair
+garage door repair
+water heater repair
+drain cleaning
+septic tank service
+sewer repair
+water damage restoration
+mold removal
+fire damage restoration
+flooring contractor
+tile contractor
+hardwood floor refinishing
+drywall contractor
+insulation contractor
+siding contractor
+window installation
+door installation
+fence contractor
+deck builder
+concrete contractor
+paving contractor
+masonry contractor
+landscaping company
+lawn care service
+tree service
+irrigation contractor
+pool cleaning service
+pool builder
+solar panel installer
+home inspector
+general contractor
+home builder
+kitchen remodeling
+bathroom remodeling
+interior designer
+architect
+cabinet maker
+countertop installer
+home security company
+junk removal
+moving company
+self storage
+waterproofing contractor
+foundation repair
+excavation contractor
+demolition contractor
+glass repair
+blinds and curtains
+upholstery shop
+furniture repair
+TV mounting service
+well drilling
+snow removal
+garden center
+plant nursery
+CCTV installation
+generator repair
+
+# Health & medical
+dentist
+orthodontist
+pediatric dentist
+cosmetic dentist
+oral surgeon
+family doctor
+pediatrician
+gynecologist
+dermatologist
+cardiologist
+orthopedic surgeon
+neurologist
+psychiatrist
+psychologist
+counseling service
+ophthalmologist
+optometrist
+optician
+ENT doctor
+urologist
+gastroenterologist
+endocrinologist
+oncologist
+nephrologist
+pulmonologist
+rheumatologist
+allergist
+plastic surgeon
+general surgeon
+vascular surgeon
+physiotherapist
+chiropractor
+podiatrist
+occupational therapist
+speech therapist
+audiologist
+hearing aid store
+pharmacy
+diagnostic center
+medical laboratory
+radiology center
+urgent care
+hospital
+maternity hospital
+fertility clinic
+IVF center
+dialysis center
+rehabilitation center
+addiction treatment center
+home health care
+nursing home
+assisted living
+hospice
+ambulance service
+acupuncture
+ayurvedic clinic
+homeopathy clinic
+massage therapist
+weight loss center
+nutritionist
+hair transplant clinic
+laser hair removal
+sports medicine
+pain management clinic
+medical spa
+medical equipment supplier
+veterinarian
+emergency vet
+
+# Beauty & personal care
+hair salon
+barber shop
+beauty salon
+nail salon
+spa
+makeup artist
+eyelash extensions
+eyebrow threading
+waxing salon
+tanning salon
+tattoo shop
+beauty supply store
+cosmetics store
+perfume store
+
+# Automotive
+auto repair shop
+auto body shop
+car wash
+car detailing
+tire shop
+oil change
+transmission repair
+brake repair
+auto electrician
+car AC repair
+windshield repair
+car dealer
+used car dealer
+motorcycle dealer
+motorcycle repair
+car rental
+towing service
+auto parts store
+driving school
+car audio
+window tinting
+truck repair
+EV charging station
+car battery store
+RV dealer
+boat dealer
+bicycle shop
+vehicle wrap
+limousine service
+taxi service
+charter bus company
+truck rental
+
+# Food & drink
+restaurant
+pizza restaurant
+bakery
+cafe
+coffee shop
+bar
+pub
+brewery
+winery
+nightclub
+fast food restaurant
+burger restaurant
+Chinese restaurant
+Indian restaurant
+Italian restaurant
+Mexican restaurant
+Thai restaurant
+Japanese restaurant
+sushi restaurant
+Korean restaurant
+Vietnamese restaurant
+Mediterranean restaurant
+Greek restaurant
+Middle Eastern restaurant
+seafood restaurant
+steakhouse
+vegetarian restaurant
+vegan restaurant
+BBQ restaurant
+buffet restaurant
+fine dining restaurant
+family restaurant
+breakfast restaurant
+food truck
+ice cream shop
+dessert shop
+juice bar
+tea house
+cake shop
+donut shop
+sandwich shop
+catering service
+butcher shop
+fish market
+grocery store
+supermarket
+organic store
+liquor store
+wine shop
+sweet shop
+chocolate shop
+farmers market
+halal restaurant
+meal prep service
+hookah lounge
+sports bar
+cocktail bar
+bubble tea shop
+
+# Legal & financial
+lawyer
+divorce lawyer
+criminal lawyer
+personal injury lawyer
+immigration lawyer
+family lawyer
+real estate lawyer
+corporate lawyer
+tax lawyer
+employment lawyer
+bankruptcy lawyer
+estate planning attorney
+patent attorney
+notary public
+accountant
+tax preparation service
+bookkeeping service
+payroll service
+financial advisor
+insurance agency
+life insurance agent
+health insurance agent
+car insurance agent
+mortgage broker
+loan agency
+bank
+credit union
+currency exchange
+investment firm
+
+# Real estate
+real estate agent
+real estate agency
+property management
+commercial real estate
+apartment rental
+coworking space
+office space rental
+warehouse rental
+vacation rental
+
+# Business services
+marketing agency
+digital marketing agency
+SEO agency
+web design company
+software company
+IT services
+computer repair
+laptop repair
+mobile phone repair
+data recovery
+printing service
+sign shop
+graphic designer
+photographer
+wedding photographer
+videographer
+photo studio
+recruitment agency
+staffing agency
+business consultant
+HR consultant
+translation service
+courier service
+shipping company
+freight forwarder
+logistics company
+security guard service
+private investigator
+commercial cleaning
+janitorial service
+internet service provider
+advertising agency
+public relations firm
+video production company
+packaging company
+
+# Events & weddings
+event planner
+wedding planner
+banquet hall
+wedding venue
+party supplies
+DJ service
+sound system rental
+tent rental
+florist
+balloon decoration
+photo booth rental
+event rentals
+wedding dress shop
+tuxedo rental
+conference center
+
+# Travel & hospitality
+hotel
+motel
+resort
+bed and breakfast
+hostel
+guest house
+serviced apartment
+travel agency
+tour operator
+visa consultant
+immigration consultant
+passport photo
+airport shuttle
+campground
+
+# Education
+preschool
+daycare
+college
+university
+tutoring service
+coaching center
+test prep center
+language school
+music school
+dance school
+art school
+computer training institute
+coding bootcamp
+swimming lessons
+martial arts school
+yoga classes
+cooking classes
+Montessori school
+boarding school
+special education school
+flight school
+
+# Fitness & recreation
+gym
+CrossFit gym
+personal trainer
+yoga studio
+pilates studio
+boxing gym
+swimming pool
+sports club
+golf course
+tennis court
+badminton court
+bowling alley
+movie theater
+escape room
+gaming zone
+arcade
+amusement park
+water park
+trampoline park
+go kart track
+paintball
+museum
+art gallery
+zoo
+aquarium
+climbing gym
+karaoke bar
+billiards hall
+kids play area
+performing arts theater
+ski resort
+
+# Retail
+clothing store
+men's clothing store
+women's clothing store
+kids clothing store
+shoe store
+jewelry store
+watch store
+electronics store
+mobile phone store
+computer store
+furniture store
+mattress store
+home decor store
+hardware store
+paint store
+lighting store
+appliance store
+bookstore
+stationery store
+toy store
+gift shop
+sporting goods store
+pet store
+department store
+shopping mall
+thrift store
+pawn shop
+antique store
+musical instrument store
+video game store
+craft store
+fabric store
+tailor
+dry cleaning
+laundromat
+laundry service
+shoe repair
+watch repair
+jewelry repair
+gold buyer
+costume shop
+baby store
+lingerie store
+vape shop
+tobacco shop
+building materials supplier
+plumbing supply store
+electrical supply store
+tile store
+flooring store
+carpet store
+lumber yard
+granite and marble supplier
+office supplies store
+fishing store
+outdoor gear store
+camera store
+uniform store
+convenience store
+dollar store
+health food store
+supplement store
+kitchen supply store
+handbag store
+farm supply store
+
+# Pets
+pet grooming
+dog trainer
+pet boarding
+dog daycare
+pet sitter
+dog walker
+aquarium store
+animal shelter
+
+# Industrial & B2B
+machine shop
+welding service
+metal fabrication
+recycling center
+scrap metal dealer
+waste management
+dumpster rental
+portable toilet rental
+crane service
+scaffolding rental
+equipment rental
+industrial equipment supplier
+electric motor repair
+hydraulic repair
+boiler service
+refrigeration repair
+commercial kitchen equipment
+restaurant supply store
+vending machine service
+cold storage
+fire safety equipment
+
+# Family & community
+babysitter
+nanny agency
+maid service
+senior care
+funeral home
+matchmaking service

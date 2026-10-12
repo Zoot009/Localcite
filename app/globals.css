@@ -1,0 +1,182 @@
+@import "tailwindcss";
+
+/* Brand colours live here: change these to rebrand the whole site.
+   brand = indigo (buttons, links, dark hero), accent = violet (highlights, glows), star = amber. */
+@theme {
+  --color-brand-50: #eef2ff;
+  --color-brand-100: #e0e7ff;
+  --color-brand-200: #c7d2fe;
+  --color-brand-300: #a5b4fc;
+  --color-brand-400: #818cf8;
+  --color-brand-500: #6366f1;
+  --color-brand-600: #4f46e5;
+  --color-brand-700: #4338ca;
+  --color-brand-800: #3730a3;
+  --color-brand-900: #312e81;
+  --color-brand-950: #1e1b4b;
+  --color-accent-200: #ddd6fe;
+  --color-accent-300: #c4b5fd;
+  --color-accent-400: #a78bfa;
+  --color-accent-500: #8b5cf6;
+  --color-star: #f59e0b;
+  /* Themed in [data-theme] below: the page behind everything, and cards / menus / inputs on top of it. */
+  --color-page: #fff;
+  --color-surface: #fff;
+  --font-sans: var(--font-geist-sans), ui-sans-serif, system-ui, sans-serif;
+  --font-display: var(--font-bricolage), var(--font-geist-sans), ui-sans-serif, system-ui, sans-serif;
+
+  /* Hero photo columns (components/HeroMarquee.tsx): each column holds its list twice, so sliding by half loops seamlessly. */
+  --animate-marquee-up: marquee-up 50s linear infinite;
+  --animate-marquee-down: marquee-down 50s linear infinite;
+  @keyframes marquee-up {
+    from { transform: translateY(0); }
+    to { transform: translateY(-50%); }
+  }
+  @keyframes marquee-down {
+    from { transform: translateY(-50%); }
+    to { transform: translateY(0); }
+  }
+}
+
+/* Soft light blooms for dark brand sections (plain CSS variables so arbitrary Tailwind values can use them). */
+:root {
+  --glow-accent: rgb(139 92 246 / 0.38); /* violet */
+  --glow-brand: rgb(99 102 241 / 0.32); /* indigo */
+  --glow-warm: rgb(236 72 153 / 0.16); /* a hint of pink */
+}
+
+/* ---------- Light / dark theme ----------
+   <html data-theme> is set before paint by the script in app/layout.tsx and switched by ThemeToggle (components/client.tsx).
+   Dark mode swaps the grey scale end for end (zinc-900 text turns light, zinc-50 backgrounds turn dark) and softens the
+   indigo tints, so components keep their usual classes. Sections that are dark in both themes (the home hero, the
+   brand banners) carry data-theme="light" to keep the original values; `dark:` covers the few places that need more. */
+@custom-variant dark (&:where([data-theme='dark'] *):not(:where([data-theme='light'] *)));
+
+[data-theme='light'] {
+  color-scheme: light;
+  --color-page: #fff;
+  --color-surface: #fff;
+  --color-zinc-50: oklch(98.5% 0 0);
+  --color-zinc-100: oklch(96.7% 0.001 286.375);
+  --color-zinc-200: oklch(92% 0.004 286.32);
+  --color-zinc-300: oklch(87.1% 0.006 286.286);
+  --color-zinc-400: oklch(70.5% 0.015 286.067);
+  --color-zinc-500: oklch(55.2% 0.016 285.938);
+  --color-zinc-600: oklch(44.2% 0.017 285.786);
+  --color-zinc-700: oklch(37% 0.013 285.805);
+  --color-zinc-800: oklch(27.4% 0.006 286.033);
+  --color-zinc-900: oklch(21% 0.006 285.885);
+  --color-zinc-950: oklch(14.1% 0.005 285.823);
+  --color-brand-50: #eef2ff;
+  --color-brand-100: #e0e7ff;
+  --color-brand-700: #4338ca;
+  --color-brand-800: #3730a3;
+}
+
+[data-theme='dark'] {
+  color-scheme: dark;
+  --color-page: oklch(14.5% 0.005 286);
+  --color-surface: oklch(21% 0.006 286);
+  --color-zinc-50: oklch(17.5% 0.006 286);
+  --color-zinc-100: oklch(26% 0.006 286);
+  --color-zinc-200: oklch(30.5% 0.008 286);
+  --color-zinc-300: oklch(37% 0.013 286);
+  --color-zinc-400: oklch(55% 0.016 286);
+  --color-zinc-500: oklch(70.5% 0.015 286);
+  --color-zinc-600: oklch(79% 0.01 286);
+  --color-zinc-700: oklch(87% 0.006 286);
+  --color-zinc-800: oklch(92% 0.004 286);
+  --color-zinc-900: oklch(96.5% 0.002 286);
+  --color-zinc-950: oklch(98.5% 0 0);
+  --color-brand-50: rgb(99 102 241 / 0.14); /* tints become a soft indigo glaze */
+  --color-brand-100: rgb(99 102 241 / 0.24);
+  --color-brand-700: #a5b4fc; /* link text turns light */
+  --color-brand-800: #c7d2fe;
+}
+
+body {
+  background: var(--color-page);
+  color: var(--color-zinc-900);
+}
+
+/* Map pins and popups: components/ResultsMap.tsx */
+.map-pin {
+  display: grid;
+  place-items: center;
+  width: 32px;
+  height: 32px;
+  border: 2px solid #fff;
+  border-radius: 9999px;
+  background: var(--color-brand-600);
+  color: #fff;
+  font: 600 13px/1 var(--font-sans);
+  box-shadow: 0 4px 12px rgb(30 27 75 / 0.35);
+  cursor: pointer;
+  transition: transform 0.15s, background-color 0.15s;
+}
+.map-pin:empty::after {
+  content: '';
+  width: 10px;
+  height: 10px;
+  border-radius: 9999px;
+  background: #fff;
+}
+.map-pin.is-active {
+  background: var(--color-accent-500);
+  transform: scale(1.25);
+}
+.map-popup {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  color: var(--color-zinc-900);
+  font-size: 14px;
+  text-decoration: none;
+}
+.map-popup span {
+  color: var(--color-zinc-500);
+  font-size: 12px;
+}
+/* The result card the Google map is showing (the one you hovered) */
+[data-biz].is-on-map {
+  border-color: var(--color-brand-300);
+  box-shadow: 0 0 0 3px var(--color-brand-100);
+}
+
+h1 {
+  font-family: var(--font-display);
+  letter-spacing: -0.02em;
+}
+
+@layer components {
+  .btn {
+    @apply inline-flex items-center justify-center gap-2 rounded-lg px-4 py-2.5 text-sm font-semibold transition-colors focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-brand-600 disabled:cursor-not-allowed disabled:opacity-50;
+  }
+  .btn-primary {
+    @apply bg-brand-600 text-white hover:bg-brand-700 dark:hover:bg-brand-500;
+  }
+  .btn-outline {
+    @apply border border-zinc-300 bg-surface text-zinc-800 hover:bg-zinc-50;
+  }
+  .card {
+    @apply rounded-2xl border border-zinc-200 bg-surface;
+  }
+  .chip {
+    @apply inline-flex items-center gap-1.5 rounded-full border border-zinc-300 bg-surface px-3.5 py-1.5 text-sm text-zinc-700 transition-colors hover:border-zinc-400 hover:bg-zinc-50;
+  }
+  .chip-active {
+    @apply border-brand-600 bg-brand-50 text-brand-800 hover:border-brand-700 hover:bg-brand-100;
+  }
+  .input {
+    @apply w-full rounded-lg border border-zinc-300 bg-surface px-3.5 py-2.5 text-sm text-zinc-900 placeholder:text-zinc-400 focus:border-brand-600 focus:ring-2 focus:ring-brand-100 focus:outline-none;
+  }
+  .label {
+    @apply mb-1.5 block text-sm font-medium text-zinc-800;
+  }
+  .section-title {
+    @apply font-display text-2xl font-bold tracking-tight text-zinc-900 sm:text-3xl;
+  }
+  .eyebrow {
+    @apply text-sm font-semibold tracking-wide text-brand-700 uppercase;
+  }
+}

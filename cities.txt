@@ -1,0 +1,7 @@
+# One city per line, as you'd type it into Google Maps. Start with ONE city, check Google indexes it, then add more.
+# The part before the comma must appear in business addresses; results outside it are dropped.
+# Not in the US? Set the country too, e.g. PowerShell: $env:GL="in"
+# Austin, TX
+# Pune, Maharashtra
+# Manchester, UK
+Mumbai, Maharashtra
