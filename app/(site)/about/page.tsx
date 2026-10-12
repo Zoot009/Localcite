@@ -47,7 +47,7 @@ export default function AboutPage() {
           <li>No hate speech, harassment, threats, or other people’s personal information.</li>
           <li>Keep it relevant: focus on the product, service and experience.</li>
         </ul>
-        <p className="mt-4 text-zinc-700">We check reviews before they’re published and remove ones that break these rules.</p>
+        <p className="mt-4 text-zinc-700">Reviews go live straight away, and we remove ones that break these rules.</p>
       </section>
 
       <section id="contact" className="mt-12 scroll-mt-[calc(var(--header-h)_+_1.25rem)]">

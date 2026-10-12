@@ -3,7 +3,8 @@
 //
 // Uses the admin DATABASE_URL from .env.local, like the scraper; the website itself never sees it.
 // It creates `web_forms`, an insert-only login for the website, and saves its URL as WEB_FORMS_DATABASE_URL in
-// .env.local. web_forms can add rows but can't read them back or mark a listing paid or published.
+// .env.local. web_forms can add rows but can't read them back or mark a listing paid or published. The read-only
+// login (web_reader) may read reviews written on the site, minus emails and ones marked rejected, to show them.
 // Safe to run again: tables and policies are created only if missing, and the password is kept.
 import crypto from 'node:crypto';
 import fs from 'node:fs';
@@ -59,6 +60,12 @@ drop policy if exists "web_forms adds claims" on public.claim_requests;
 create policy "web_forms adds claims" on public.claim_requests for insert to web_forms with check (status = 'pending');
 drop policy if exists "web_forms adds reviews" on public.user_reviews;
 create policy "web_forms adds reviews" on public.user_reviews for insert to web_forms with check (status = 'pending');
+
+-- Reviews show on the business page as soon as they're written; mark one 'rejected' to hide it.
+create index if not exists user_reviews_business_idx on public.user_reviews (business_id, created_at desc);
+grant select (id, business_id, rating, body, author_name, created_at) on public.user_reviews to web_reader;
+drop policy if exists "web_reader reads published reviews" on public.user_reviews;
+create policy "web_reader reads published reviews" on public.user_reviews for select to web_reader using (status <> 'rejected');
 `;
 
 const db = new pg.Client({ connectionString: DATABASE_URL, ssl: { rejectUnauthorized: false } });

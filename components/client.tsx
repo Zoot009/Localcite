@@ -204,7 +204,7 @@ export function ReviewForm({ slug, title }: { slug: string; title: string }) {
   const [rating, setRating] = useState(0)
   const [hover, setHover] = useState(0)
   const { checks, formProps } = useChecks(REVIEW_RULES, state?.errors, (values): Record<string, string> => (Number(values.rating) >= 1 ? {} : { rating: MESSAGES.rating }))
-  if (state?.ok) return <Success message={state.message} href={`/biz/${slug}`} linkText={`Back to ${title}`} />
+  if (state?.ok) return <Success message={state.message} href={`/biz/${slug}#reviews`} linkText={`See it on ${title}`} />
   const shown = hover || rating
   return (
     <FormChecks value={checks}>

@@ -121,12 +121,17 @@ export function ReviewCard({ review }: { review: Review }) {
           <p className="mt-1 text-zinc-700">{review.response.snippet}</p>
         </div>
       )}
-      <footer className="mt-3 flex items-center gap-4 text-sm text-zinc-500">
-        <span className="flex items-center gap-1.5">
-          <ThumbsUpIcon width={15} height={15} /> Helpful{review.likes ? ` (${review.likes})` : ''}
-        </span>
-        {review.source && <span>Review from {review.source}</span>}
-      </footer>
+      {/* Likes come from Google; there's no like button here, so say nothing when there are none. */}
+      {(review.likes || review.source) && (
+        <footer className="mt-3 flex items-center gap-4 text-sm text-zinc-500">
+          {!!review.likes && (
+            <span className="flex items-center gap-1.5">
+              <ThumbsUpIcon width={15} height={15} /> {review.likes} found this helpful
+            </span>
+          )}
+          {review.source && <span>Review from {review.source}</span>}
+        </footer>
+      )}
     </article>
   )
 }
@@ -169,7 +174,7 @@ export function RatingSummary({ b, counts }: { b: Business; counts: number[] }) 
         <div className="mt-2">
           <Stars rating={b.rating} size={20} />
         </div>
-        <p className="mt-1 text-sm text-zinc-500">{n(b.reviews)} reviews</p>
+        <p className="mt-1 text-sm text-zinc-500">{n(b.reviews)} reviews on Google</p>
       </div>
       {hasBreakdown && <ul className="space-y-1.5">
         {counts.map((c, i) => (

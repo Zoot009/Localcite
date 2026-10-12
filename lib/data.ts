@@ -1,9 +1,9 @@
 // All directory data comes from Supabase (tables filled by the scrape.do pipeline).
 // Every read is cached for a day with 'use cache': the data only changes when the scraper runs.
-import { cacheLife } from 'next/cache'
+import { cacheLife, cacheTag } from 'next/cache'
 import { sql } from './db'
 import { MIN_AREA_LISTINGS, MIN_CATEGORY_LISTINGS, PAGE_SIZE } from './site'
-import type { AreaCount, Business, CategoryCount, CategoryGroup, City, Listing } from './types'
+import type { AreaCount, Business, CategoryCount, CategoryGroup, City, Listing, Review } from './types'
 import { cap, slugify } from './utils'
 
 // ---------- businesses ----------
@@ -302,6 +302,20 @@ export async function getReviewStats() {
      from businesses where rating is not null and review_count > 0`,
   )
   return { total: Number(r.total), avg: r.avg }
+}
+
+// Reviews people wrote on this site for one business, newest first; ones marked rejected in Supabase are hidden.
+// Tagged, so a new review shows straight away (submitReview in lib/actions.ts calls updateTag); the short cache life
+// picks up a review you reject in Supabase within a few minutes.
+export async function getSiteReviews(businessId: string): Promise<Review[]> {
+  'use cache'
+  cacheLife('minutes')
+  cacheTag(`reviews-${businessId}`)
+  const rows = await sql<{ id: string; rating: number; body: string; author_name: string; created_at: Date }>(
+    `select id, rating, body, author_name, created_at from user_reviews where business_id = $1 order by created_at desc limit 50`,
+    [businessId],
+  )
+  return rows.map(r => ({ review_id: `site-${r.id}`, rating: r.rating, snippet: r.body, iso_date: new Date(r.created_at).toISOString(), user: { name: r.author_name } }))
 }
 
 // Quick picks: listed first in the search suggestions.

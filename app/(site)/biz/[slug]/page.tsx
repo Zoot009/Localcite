@@ -12,7 +12,7 @@ import { HoursTable, ShareButton } from '@/components/client'
 import { ResultsMap } from '@/components/ResultsMap'
 import { DirectionsIcon, ExternalIcon, GlobeIcon, PencilIcon, PhoneIcon, PinIcon, ShieldIcon, StarIcon } from '@/components/icons'
 import { BizImage, Breadcrumbs, JsonLd } from '@/components/ui'
-import { getBusiness, getListing, getListingAreas, getSimilar, getTopRated, ratingBreakdown } from '@/lib/data'
+import { getBusiness, getListing, getListingAreas, getSimilar, getSiteReviews, getTopRated, ratingBreakdown } from '@/lib/data'
 import { SITE } from '@/lib/site'
 import type { Business } from '@/lib/types'
 import { cap, cityName, directionsUrl, featureLabel, hostname, mapPoints, plural, safeUrl, telHref } from '@/lib/utils'
@@ -173,8 +173,10 @@ export default async function BizPage({ params }: PageProps<'/biz/[slug]'>) {
   const extraLinks = ([['Menu', b.menu?.link], ['Order online', b.order_online], ['Reserve a table', b.reserve_a_table], ['Book online', b.book_online]] as const)
     .map(([label, url]) => [label, safeUrl(url)] as const)
     .filter((x): x is readonly [typeof x[0], string] => !!x[1])
-  const reviews = b.review_items ?? []
-  const [listing, areas, similar] = await Promise.all([getListing(b.citySlug, nicheSlug), getListingAreas(b.citySlug, nicheSlug), getSimilar(b, 4)])
+  const reviews = b.review_items ?? [] // Google's, from the listing data
+  const [listing, areas, similar, siteReviews] = await Promise.all([
+    getListing(b.citySlug, nicheSlug), getListingAreas(b.citySlug, nicheSlug), getSimilar(b, 4), getSiteReviews(b.key),
+  ])
   const areaPage = b.areaSlug && areas.some(a => a.slug === b.areaSlug)
   const nicheHref = `/${b.citySlug}/${nicheSlug}`
 
@@ -243,17 +245,32 @@ export default async function BizPage({ params }: PageProps<'/biz/[slug]'>) {
                   <p className="font-medium">Been to {b.title}? Share your experience.</p>
                   <Link href={`/write-a-review?biz=${b.slug}`} className="btn btn-primary"><StarIcon width={18} height={18} /> Write a review</Link>
                 </div>
-                {reviews.length > 0 ? (
-                  <div className="mt-4">
-                    {reviews.map((r, i) => <ReviewCard key={r.review_id ?? i} review={r} />)}
+                {/* Reviews written here, with their own count, kept apart from Google's total above. */}
+                <h3 className="mt-8 flex items-baseline gap-2 text-lg font-semibold">
+                  Reviews on {SITE.name}
+                  {siteReviews.length > 0 && <span className="text-sm font-normal text-zinc-500">{siteReviews.length}</span>}
+                </h3>
+                {siteReviews.length > 0 ? (
+                  <div className="mt-1">
+                    {siteReviews.map(r => <ReviewCard key={r.review_id} review={r} />)}
                   </div>
-                ) : b.user_review ? (
-                  <figure className="mt-6 rounded-2xl border-l-4 border-star bg-amber-50/60 p-5">
-                    <blockquote className="text-lg leading-relaxed text-zinc-800">“{b.user_review.replace(/^"|"$/g, '')}”</blockquote>
-                    <figcaption className="mt-2 text-sm text-zinc-500">Review highlight from Google</figcaption>
-                  </figure>
                 ) : (
-                  <p className="mt-6 text-zinc-600">No written reviews yet. Be the first!</p>
+                  <p className="mt-2 text-zinc-600">No reviews on {SITE.name} yet. Be the first to write one.</p>
+                )}
+                {reviews.length > 0 ? (
+                  <>
+                    <h3 className="mt-8 text-lg font-semibold">From Google</h3>
+                    <div className="mt-1">
+                      {reviews.map((r, i) => <ReviewCard key={r.review_id ?? i} review={r} />)}
+                    </div>
+                  </>
+                ) : (
+                  b.user_review && (
+                    <figure className="mt-8 rounded-2xl border-l-4 border-star bg-amber-50/60 p-5">
+                      <blockquote className="text-lg leading-relaxed text-zinc-800">“{b.user_review.replace(/^"|"$/g, '')}”</blockquote>
+                      <figcaption className="mt-2 text-sm text-zinc-500">Review highlight from Google</figcaption>
+                    </figure>
+                  )
                 )}
               </Section>
             </div>

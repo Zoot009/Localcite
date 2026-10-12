@@ -1,4 +1,5 @@
 'use server'
+import { updateTag } from 'next/cache'
 import { getBusiness, getCities } from './data'
 import { insert, sql } from './db'
 import { CLAIM_RULES, LISTING_RULES, MESSAGES, REVIEW_RULES, check, cityRule, matchCity, websiteUrl } from './validate'
@@ -35,9 +36,12 @@ export async function submitReview(_: FormState, fd: FormData): Promise<FormStat
   const errors = check(REVIEW_RULES, values)
   if (!Number.isInteger(rating) || rating < 1 || rating > 5) errors.rating = MESSAGES.rating
   if (Object.keys(errors).length) return invalid(values, errors)
-  return save(values, 'Thanks! Your review will appear once it has been checked.',
+  const result = await save(values, 'Thanks! Your review is live.',
     'insert into user_reviews (business_id, rating, body, author_name, author_email) values ($1, $2, $3, $4, $5)',
     [business.key, rating, values.text, values.name, values.email])
+  // Show it on the business page straight away (getSiteReviews in lib/data.ts is tagged with this).
+  if (result?.ok) updateTag(`reviews-${business.key}`)
+  return result
 }
 
 export async function submitBusiness(_: FormState, fd: FormData): Promise<FormState> {
