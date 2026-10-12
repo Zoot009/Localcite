@@ -5,6 +5,7 @@ import { BizCard } from '@/components/biz'
 import { CategoryIcon } from '@/components/CategoryIcon'
 import { HeroMarquee, NearbyMarquee } from '@/components/HeroMarquee'
 import { Tabs } from '@/components/client'
+import { Footer } from '@/components/Footer'
 import { Header } from '@/components/Header'
 import { GlobeIcon, PhoneIcon } from '@/components/icons'
 import { BizImage, CityTile, SearchForm, SectionHeader, Stars } from '@/components/ui'
@@ -252,6 +253,7 @@ export default async function Home() {
           </div>
         </section>
       </main>
+      <Footer />
     </>
   )
 }

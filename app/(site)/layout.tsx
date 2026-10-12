@@ -1,4 +1,5 @@
 import type { ReactNode } from 'react'
+import { Footer } from '@/components/Footer'
 import { Header } from '@/components/Header'
 
 // Every page except the home page: the white header bar on top. The home page draws its own see-through header
@@ -8,6 +9,7 @@ export default function SiteLayout({ children }: { children: ReactNode }) {
     <>
       <Header />
       <main className="flex-1">{children}</main>
+      <Footer />
     </>
   )
 }
