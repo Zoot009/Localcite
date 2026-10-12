@@ -55,13 +55,14 @@ export function Logo({ className = '' }: { className?: string }) {
   )
 }
 
-// The site name in two tones, its last word in brand indigo (LocalCompany + Guide), so a long name reads at a glance.
+// The site name in two tones, its last word in brand indigo (CityService + Listing), so a long name reads at a glance.
+// White and light indigo on the home page's see-through header (data-home: <Header home /> in components/Header.tsx).
 export function Wordmark() {
   const [, head, tail] = SITE.name.match(/^(.*?)([A-Z][a-z]*)$/) ?? [null, SITE.name, '']
   return (
-    <span className="font-display font-extrabold tracking-[-0.03em] text-zinc-900">
+    <span className="font-display font-extrabold tracking-[-0.03em] text-zinc-900 group-data-[home]/header:text-white">
       {head}
-      <span className="text-brand-600">{tail}</span>
+      <span className="text-brand-600 group-data-[home]/header:text-brand-300">{tail}</span>
     </span>
   )
 }

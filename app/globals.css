@@ -44,10 +44,10 @@
   }
 }
 
-/* Height of the sticky header (components/Header.tsx): a 0.75rem gap and the 3.5rem capsule. Pages use it to slide
-   under the header, or to stop just below it. */
+/* Height of the header (components/Header.tsx): a 0.75rem gap and the 4rem bar. Pages use it to slide under the
+   header, or to stop right below it. */
 :root {
-  --header-h: 4.25rem;
+  --header-h: 4.75rem;
 }
 
 /* Soft light blooms for dark brand sections (plain CSS variables so arbitrary Tailwind values can use them). */

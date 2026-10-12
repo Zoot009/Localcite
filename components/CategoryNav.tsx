@@ -13,13 +13,15 @@ const PER_MENU = 15 // three columns of five
 const menuLabel = (group: string, name: string) => (group === 'Restaurants' ? cap(plural(name)).replace(/ restaurants$/, '') : cap(plural(name)))
 
 // The home page's row of category menus, white text over the hero video (like Yelp's). Each group opens a panel of
-// its categories under its label (HoverMenu in components/client.tsx). Centred under the header capsule, and kept out
-// of it, so the header stays one slim row.
+// its categories under its label (HoverMenu in components/client.tsx). Shown under the header's search box on the home
+// page (components/Header.tsx), lined up with its left edge.
 export function CategoryNav({ groups }: { groups: CategoryGroup[] }) {
   const main = MAIN_GROUPS.map(name => groups.find(g => g.name === name)).filter((g): g is CategoryGroup => !!g)
   const more = groups.filter(g => !main.includes(g))
   return (
-    <nav aria-label="Categories" className="flex h-11 items-center justify-center gap-0.5">
+    // Laptops: -ml-3 lines the first label up with the logo. Large screens (xl:): centred under the search box, so it
+    // overhangs both ends equally. To nudge it, add e.g. xl:-ml-6 (24px further left) or xl:ml-6 (24px right).
+    <nav aria-label="Categories" className="-ml-3 flex h-11 items-center gap-0.5 xl:ml-0 xl:justify-center">
       {main.map(g => (
         <HoverMenu key={g.slug} label={g.name} href={`/categories#${g.slug}`}>
           <MenuLinks

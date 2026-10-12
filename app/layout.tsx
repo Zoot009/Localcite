@@ -1,7 +1,6 @@
 import type { Metadata } from 'next'
 import { Plus_Jakarta_Sans } from 'next/font/google'
 import { Footer } from '@/components/Footer'
-import { Header } from '@/components/Header'
 import { SITE } from '@/lib/site'
 import './globals.css'
 
@@ -19,8 +18,9 @@ export default function RootLayout({ children }: LayoutProps<'/'>) {
   return (
     <html lang="en" className={`${jakarta.variable} h-full antialiased`}>
       <body className="flex min-h-full flex-col">
-        <Header />
-        <main className="flex-1">{children}</main>
+        {/* Each page brings its own header and <main>: the home page its see-through header (app/page.tsx), the rest
+            the white bar (app/(site)/layout.tsx). */}
+        {children}
         <Footer />
       </body>
     </html>

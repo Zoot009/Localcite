@@ -1,6 +1,5 @@
 'use client'
 import Link from 'next/link'
-import { usePathname } from 'next/navigation'
 import {
   createContext, useActionState, useContext, useState, useSyncExternalStore,
   type FormEvent, type InputHTMLAttributes, type ReactNode, type SyntheticEvent, type TextareaHTMLAttributes,
@@ -401,18 +400,10 @@ export function BusinessForm({ claim, categories, cities }: { claim?: ClaimTarge
   )
 }
 
-// The home page has its own big search, so the header one steps aside there and the capsule closes up around the
-// rest. (A pathname check, not CSS :has(): the home page stays in the DOM, hidden, after you navigate away.)
-// Fixed widths, because the capsule is only as wide as its contents: there's no spare room to stretch into.
-export function HeaderSearch({ children }: { children: ReactNode }) {
-  const home = usePathname() === '/'
-  return home ? null : <div className="hidden lg:block lg:w-[22rem] xl:w-[34rem]">{children}</div>
-}
-
-// A menu in the home page's category row (components/CategoryNav.tsx). Its panel opens from the label's left edge and
-// moves left only as far as it must to stay on screen, measured each time it opens, so it fits any width. Shown while
-// hovered, or while it has keyboard focus (focus-visible, so a mouse click doesn't leave it stuck open). An invisible
-// strip (before:) bridges the gap so the pointer can reach the panel.
+// A menu in the home page's category row (components/CategoryNav.tsx). Hovered, its label becomes a purple pill and its
+// panel opens just below, from the same left edge, moving left only as far as it must to stay on screen (measured each
+// time it opens, so it fits any width). Also opens while it has keyboard focus (focus-visible, so a mouse click doesn't
+// leave it stuck open). An invisible strip (before:) bridges the gap so the pointer can reach the panel.
 export function HoverMenu({ label, href, children }: { label: string; href: string; children: ReactNode }) {
   function place(e: SyntheticEvent<HTMLDivElement>) {
     const panel = e.currentTarget.lastElementChild as HTMLElement
@@ -423,11 +414,11 @@ export function HoverMenu({ label, href, children }: { label: string; href: stri
     <div onMouseEnter={place} onFocus={place} className="group/menu relative flex h-full items-center">
       <Link
         href={href}
-        className="flex items-center gap-1 rounded-full px-3 py-1.5 text-sm font-medium whitespace-nowrap text-white/85 transition-colors group-hover/menu:bg-white/10 group-hover/menu:text-white"
+        className="flex items-center gap-1 rounded-full px-3 py-1.5 text-sm font-medium whitespace-nowrap text-white/85 transition-colors group-hover/menu:bg-brand-600 group-hover/menu:text-white group-hover/menu:shadow-md group-hover/menu:shadow-brand-950/40 group-has-[:focus-visible]/menu:bg-brand-600 group-has-[:focus-visible]/menu:text-white"
       >
         {label}
         {/* Flips without animating, so it never shows half-turned. */}
-        <ChevronDownIcon width={14} height={14} className="text-white/60 group-hover/menu:rotate-180" />
+        <ChevronDownIcon width={14} height={14} className="text-white/60 group-hover/menu:rotate-180 group-hover/menu:text-white" />
       </Link>
       <div className="invisible absolute top-full left-0 z-50 mt-1.5 w-[36rem] rounded-2xl border border-zinc-200 bg-white p-2.5 opacity-0 shadow-2xl shadow-black/25 transition duration-150 before:absolute before:inset-x-0 before:bottom-full before:h-2 group-hover/menu:visible group-hover/menu:opacity-100 group-has-[:focus-visible]/menu:visible group-has-[:focus-visible]/menu:opacity-100">
         {children}

@@ -4,7 +4,7 @@ import { cacheLife } from 'next/cache'
 import { sql } from './db'
 import { MIN_AREA_LISTINGS, MIN_CATEGORY_LISTINGS, PAGE_SIZE } from './site'
 import type { AreaCount, Business, CategoryCount, CategoryGroup, City, Listing } from './types'
-import { slugify } from './utils'
+import { cap, slugify } from './utils'
 
 // ---------- businesses ----------
 
@@ -292,6 +292,38 @@ export async function getPopularNiches(n: number) {
 
 // Home page photo tiles, in the order given: each category's place count and a photo of its most-reviewed place whose
 // own main type matches the category (so a hotel that is also listed as a bar doesn't stand in for bars).
+// The ratings behind the directory, for the home page: how many customer reviews they come from, and their average
+// (each place's rating weighted by its number of reviews).
+export async function getReviewStats() {
+  'use cache'
+  cacheLife('days')
+  const [r] = await sql<{ total: string; avg: number }>(
+    `select sum(review_count)::bigint total, (sum(rating * review_count) / nullif(sum(review_count), 0))::float8 avg
+     from businesses where rating is not null and review_count > 0`,
+  )
+  return { total: Number(r.total), avg: r.avg }
+}
+
+// Quick picks: listed first in the search suggestions.
+const QUICK = ['restaurant', 'hotel', 'dentist', 'hair salon', 'plumber']
+
+// Search box suggestions: categories (the quick picks first, then the biggest) and cities (busiest first), each city
+// with its country and centre point (for "Current location").
+// ponytail: they ship with every page's header (~35 KB before compression); load them on first focus if pages get heavy.
+export async function getSearchSuggestions() {
+  'use cache'
+  cacheLife('days')
+  const [groups, cities] = await Promise.all([getCategoryGroups(), getCities()])
+  const rank = (name: string) => (QUICK.includes(name) ? QUICK.indexOf(name) : QUICK.length)
+  return {
+    what: groups
+      .flatMap(g => g.niches.map(n => ({ name: n.name, count: n.count, hint: g.name })))
+      .sort((a, b) => rank(a.name) - rank(b.name) || b.count - a.count)
+      .map(n => ({ label: cap(n.name), hint: n.hint })),
+    where: cities.map(c => ({ label: c.name, hint: c.country, point: c.lat != null && c.lng != null ? ([c.lat, c.lng] as [number, number]) : undefined })),
+  }
+}
+
 export async function getCategoryTiles(slugs: string[]) {
   'use cache'
   cacheLife('days')

@@ -112,9 +112,10 @@ const WORDS = ['Dentists', 'Cafés', 'Plumbers', 'Hotels', 'Hair salons', 'Resta
 // Each example has its own animation, started 3s after the one before: it rises in and fades in while the previous one
 // rises out and fades out. Only `translate` and `opacity` move, so the graphics card does the work and the main
 // thread can't make it stutter. With reduced motion, the first example just stands still.
-function RollingPlaceholder({ items }: { items: string[] }) {
+// `show`: when it's displayed (only while the field is empty, at the given screen sizes).
+function RollingPlaceholder({ items, show = 'peer-placeholder-shown:block' }: { items: string[]; show?: string }) {
   return (
-    <span aria-hidden className="pointer-events-none relative hidden h-[1.5em] min-w-0 overflow-hidden leading-[1.5em] text-zinc-500 [grid-area:1/1] self-center peer-placeholder-shown:block">
+    <span aria-hidden className={`pointer-events-none relative hidden h-[1.5em] min-w-0 overflow-hidden leading-[1.5em] text-zinc-500 [grid-area:1/1] self-center ${show}`}>
       {items.map((text, i) => (
         <span
           key={text}
@@ -139,13 +140,14 @@ export function SearchForm({ variant = 'page', q, loc, suggest }: { variant?: 'h
   const ids = { q: `${variant}-q`, loc: `${variant}-loc` }
   const shell = {
     hero: 'flex-col bg-white rounded-2xl shadow-2xl shadow-black/20 sm:flex-row sm:rounded-full',
-    // Header: a soft grey pill that turns white with a brand ring while you type.
-    header: 'h-11 items-center rounded-full bg-zinc-100 ring-1 ring-zinc-200/70 transition focus-within:bg-white focus-within:shadow-lg focus-within:shadow-brand-600/10 focus-within:ring-brand-300',
+    // Header: a soft grey pill that turns white with a brand ring while you type; white and a bit taller on the home
+    // page's see-through header.
+    header: 'h-11 items-center rounded-full bg-zinc-100 ring-1 ring-zinc-200/70 transition focus-within:bg-white focus-within:shadow-lg focus-within:shadow-brand-600/10 focus-within:ring-brand-300 group-data-[home]/header:h-12 group-data-[home]/header:bg-white group-data-[home]/header:shadow-lg group-data-[home]/header:shadow-black/20 group-data-[home]/header:ring-0',
     page: 'bg-white rounded-xl border border-zinc-300 focus-within:border-brand-600 focus-within:ring-2 focus-within:ring-brand-100',
   }[variant]
   return (
     <Form action="/search" role="search" className={`flex w-full ${shell}`}>
-      <div className={`relative flex min-w-0 flex-1 items-center gap-2.5 ${hero ? 'sm:flex-[1.6]' : ''} ${field}`}>
+      <div className={`relative flex min-w-0 flex-1 items-center gap-2.5 ${hero ? 'sm:flex-[1.6]' : header ? 'flex-[1.6]' : ''} ${field}`}>
         <label htmlFor={ids.q} className="shrink-0 cursor-text text-zinc-400">
           <SearchIcon />
           <span className="sr-only">Find</span>
@@ -158,7 +160,15 @@ export function SearchForm({ variant = 'page', q, loc, suggest }: { variant?: 'h
           ) : (
             <input id={ids.q} name="q" defaultValue={q} placeholder=" " className={`peer ${input} [grid-area:1/1]`} />
           )}
-          <RollingPlaceholder items={header ? WORDS : PHRASES} />
+          {header ? (
+            // The header box is narrower: single words until it's wide enough for whole phrases.
+            <>
+              <RollingPlaceholder items={WORDS} show="peer-placeholder-shown:block xl:peer-placeholder-shown:hidden" />
+              <RollingPlaceholder items={PHRASES} show="xl:peer-placeholder-shown:block" />
+            </>
+          ) : (
+            <RollingPlaceholder items={PHRASES} />
+          )}
         </div>
       </div>
       <div className={`relative flex min-w-0 flex-1 items-center gap-2.5 ${header ? 'border-zinc-300' : 'border-zinc-200'} ${field} ${hero ? 'border-t sm:border-t-0 sm:border-l' : 'border-l'}`}>
