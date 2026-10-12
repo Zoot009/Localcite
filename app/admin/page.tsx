@@ -33,10 +33,17 @@ async function Panel({ searchParams }: Pick<PageProps<'/admin'>, 'searchParams'>
   await requireAdmin()
   const asked = one((await searchParams).tab)
   const tab: Tab = TABS.find(t => t.key === asked)?.key ?? 'listings'
-  const [counts] = await adminSql<Record<Tab, string>>(
-    `select (select count(*) from listing_requests) listings, (select count(*) from claim_requests) claims,
-       (select count(*) from user_reviews) reviews`,
-  )
+  let counts: Record<Tab, string>
+  try {
+    ;[counts] = await adminSql<Record<Tab, string>>(
+      `select (select count(*) from listing_requests) listings, (select count(*) from claim_requests) claims,
+         (select count(*) from user_reviews) reviews`,
+    )
+  } catch (err) {
+    // On a new server this is nearly always the admin database login, missing or mistyped: say so instead of failing.
+    console.error('[admin] database not reachable:', err)
+    return <NoDatabase error={(err as Error).message} />
+  }
   return (
     <>
       <header className="border-b border-zinc-200 bg-white">
@@ -244,6 +251,23 @@ function Info({ label, children }: { label: string; children: ReactNode }) {
 const Mail = ({ to }: { to: string }) => <a href={`mailto:${to}`} className="text-brand-700 hover:underline">{to}</a>
 
 const Empty = ({ children }: { children: ReactNode }) => <p className="card p-10 text-center text-zinc-600">{children}</p>
+
+function NoDatabase({ error }: { error: string }) {
+  return (
+    <main className="mx-auto w-full max-w-xl flex-1 px-4 py-16">
+      <div className="card p-8">
+        <h1 className="text-xl font-bold tracking-tight">The admin panel can’t reach its database</h1>
+        <p className="mt-3 text-zinc-700">
+          Add <code className="font-mono text-sm">WEB_ADMIN_DATABASE_URL</code> to this server’s environment variables, with
+          the value from <code className="font-mono text-sm">.env.local</code>. On Vercel: Settings → Environment Variables,
+          for Production. Then redeploy, so the new value is used.
+        </p>
+        <p className="mt-4 rounded-lg bg-zinc-100 px-3 py-2 font-mono text-xs wrap-anywhere text-zinc-700">{error}</p>
+        <form action={logout} className="mt-6"><button type="submit" className="btn btn-outline">Sign out</button></form>
+      </div>
+    </main>
+  )
+}
 
 function Skeleton() {
   return (

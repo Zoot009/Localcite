@@ -43,6 +43,6 @@ export async function insert(text: string, params: unknown[] = []) {
 // change their status, delete them and publish listings. Only call it after requireAdmin() (app/admin/auth.ts).
 export async function adminSql<T>(text: string, params: unknown[] = []): Promise<T[]> {
   const adminUrl = process.env.WEB_ADMIN_DATABASE_URL
-  if (!adminUrl) throw new Error('Set WEB_ADMIN_DATABASE_URL in .env.local (run: node scripts/setup-forms-db.mjs)')
+  if (!adminUrl) throw new Error('WEB_ADMIN_DATABASE_URL is not set (scripts/setup-forms-db.mjs makes it)')
   return (await (g.__adminPool ??= createPool(adminUrl)).query(text, params)).rows as T[]
 }
