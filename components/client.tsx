@@ -1,10 +1,15 @@
 'use client'
-import { Moon, Sun } from 'lucide-react'
 import Link from 'next/link'
 import { usePathname } from 'next/navigation'
-import { useActionState, useLayoutEffect, useState, useSyncExternalStore, type InputHTMLAttributes, type ReactNode, type TextareaHTMLAttributes } from 'react'
+import {
+  createContext, useActionState, useContext, useState, useSyncExternalStore,
+  type FormEvent, type InputHTMLAttributes, type ReactNode, type SyntheticEvent, type TextareaHTMLAttributes,
+} from 'react'
 import { submitBusiness, submitReview, type FormState } from '@/lib/actions'
-import { CheckCircleIcon, SearchIcon, ShareIcon, StarIcon } from './icons'
+import { fold } from '@/lib/utils'
+import { CLAIM_RULES, LISTING_RULES, MESSAGES, REVIEW_RULES, check, cityRule, type Rules } from '@/lib/validate'
+import { Autocomplete, type Option } from './Autocomplete'
+import { CheckCircleIcon, ChevronDownIcon, InfoIcon, MailIcon, PhoneIcon, SearchIcon, ShareIcon, StarIcon } from './icons'
 
 export function ShareButton({ title }: { title: string }) {
   const [copied, setCopied] = useState(false)
@@ -38,7 +43,7 @@ export function Tabs({ labels, panels }: { labels: ReactNode[]; panels: ReactNod
             aria-selected={active === i}
             onClick={() => setActive(i)}
             className={`inline-flex shrink-0 items-center gap-2 rounded-full px-4 py-2 text-sm font-medium transition ${
-              active === i ? 'bg-zinc-900 text-zinc-50 shadow-sm' : 'bg-surface text-zinc-700 ring-1 ring-zinc-200 hover:ring-zinc-300'
+              active === i ? 'bg-zinc-900 text-white shadow-sm' : 'bg-white text-zinc-700 ring-1 ring-zinc-200 hover:ring-zinc-300'
             }`}
           >
             {label}
@@ -98,18 +103,90 @@ function ErrorNote({ state }: { state: FormState }) {
 // Hidden from people; bots that fill every field get silently dropped by the server action.
 const Honeypot = () => <input name="company" tabIndex={-1} autoComplete="off" aria-hidden className="hidden" />
 
+// ---------- Form checks ----------
+
+type Checks = { errors: Record<string, string>; recheck: (name: string, value: string) => void }
+const FormChecks = createContext<Checks>({ errors: {}, recheck: () => {} })
+
+// Checks fields with the shared rules (lib/validate.ts): when you leave a field, again as you correct it, and all of
+// them on submit, which holds the form back until they pass. The server action checks again, and its verdict replaces
+// ours. `more` adds checks that aren't about one field's text, like the star rating or the confirm box.
+function useChecks(rules: Rules, serverErrors?: Record<string, string>, more?: (values: Record<string, string>) => Record<string, string>) {
+  const [errors, setErrors] = useState<Record<string, string>>({})
+  const [seen, setSeen] = useState(serverErrors)
+  if (seen !== serverErrors) {
+    setSeen(serverErrors)
+    setErrors(serverErrors ?? {})
+  }
+  const recheck = (name: string, value: string) => setErrors(e => ({ ...e, [name]: rules[name]?.(value.trim()) ?? '' }))
+  const formProps = {
+    noValidate: true, // our messages instead of the browser's pop-ups
+    onBlur: ({ target }: { target: EventTarget }) => {
+      const { name, value } = target as HTMLInputElement
+      if (name in rules) recheck(name, value)
+    },
+    onChange: ({ target }: { target: EventTarget }) => {
+      const { name, value } = target as HTMLInputElement
+      if (errors[name]) recheck(name, value)
+    },
+    onSubmit: (e: FormEvent<HTMLFormElement>) => {
+      const values = Object.fromEntries([...new FormData(e.currentTarget)].map(([k, v]) => [k, String(v)]))
+      const found = { ...check(rules, values), ...more?.(values) }
+      setErrors(found)
+      if (!Object.keys(found).length) return
+      e.preventDefault()
+      // Jump to the first problem on the page: the field itself, or the first button of a group like the stars.
+      const first = [...e.currentTarget.querySelectorAll<HTMLElement>('[name]:not([type=hidden]), [data-field]')]
+        .find(el => found[el.getAttribute('name') ?? el.dataset.field ?? ''])
+      ;(first?.dataset.field ? first.querySelector('button') : first)?.focus()
+    },
+  }
+  return { checks: { errors, recheck }, formProps }
+}
+
+function FieldError({ id, children }: { id: string; children: ReactNode }) {
+  return (
+    <p id={id} className="mt-1.5 flex items-start gap-1.5 text-xs font-medium text-red-600">
+      <InfoIcon width={14} height={14} className="mt-px shrink-0" />
+      {children}
+    </p>
+  )
+}
+
 type FieldProps = { label: string; name: string; hint?: string; textarea?: boolean; values?: Record<string, string>; rows?: number } &
   Omit<InputHTMLAttributes<HTMLInputElement>, 'name'>
 
 function Field({ label, name, hint, textarea, values, ...rest }: FieldProps) {
-  const props = { id: name, name, defaultValue: values?.[name], className: 'input', ...rest }
+  const error = useContext(FormChecks).errors[name]
+  const props = {
+    id: name, name, defaultValue: values?.[name], className: 'input',
+    'aria-invalid': error ? true : undefined, 'aria-describedby': error ? `${name}-error` : hint ? `${name}-hint` : undefined, ...rest,
+  }
   return (
     <div>
       <label htmlFor={name} className="label">
         {label} {!rest.required && <span className="font-normal text-zinc-400">(optional)</span>}
       </label>
       {textarea ? <textarea rows={4} {...(props as TextareaHTMLAttributes<HTMLTextAreaElement>)} /> : <input {...props} />}
-      {hint && <p className="mt-1 text-xs text-zinc-500">{hint}</p>}
+      {error ? <FieldError id={`${name}-error`}>{error}</FieldError> : hint && <p id={`${name}-hint`} className="mt-1 text-xs text-zinc-500">{hint}</p>}
+    </div>
+  )
+}
+
+// A required field with suggestions as you type (categories, cities).
+function AutoField({ label, name, hint, values, ...rest }: {
+  label: string; name: string; hint: string; values?: Record<string, string>; kind: 'what' | 'where'; options: Option[]; placeholder: string; heading: string
+}) {
+  const { errors, recheck } = useContext(FormChecks)
+  const error = errors[name]
+  return (
+    <div>
+      <label htmlFor={name} className="label">{label}</label>
+      <div className="relative">
+        <Autocomplete id={name} name={name} defaultValue={values?.[name]} className="input" required invalid={!!error}
+          describedBy={`${name}-${error ? 'error' : 'hint'}`} onChoose={value => recheck(name, value)} {...rest} />
+      </div>
+      {error ? <FieldError id={`${name}-error`}>{error}</FieldError> : <p id={`${name}-hint`} className="mt-1 text-xs text-zinc-500">{hint}</p>}
     </div>
   )
 }
@@ -127,16 +204,21 @@ export function ReviewForm({ slug, title }: { slug: string; title: string }) {
   const [state, action, pending] = useActionState(submitReview, null)
   const [rating, setRating] = useState(0)
   const [hover, setHover] = useState(0)
+  const { checks, formProps } = useChecks(REVIEW_RULES, state?.errors, (values): Record<string, string> => (Number(values.rating) >= 1 ? {} : { rating: MESSAGES.rating }))
   if (state?.ok) return <Success message={state.message} href={`/biz/${slug}`} linkText={`Back to ${title}`} />
   const shown = hover || rating
   return (
-    <form action={action} className="space-y-6">
+    <FormChecks value={checks}>
+    <form action={action} {...formProps} className="space-y-6">
       <input type="hidden" name="slug" value={slug} />
       <input type="hidden" name="rating" value={rating} />
       <div>
         <p className="label">Your rating</p>
         <div className="flex flex-wrap items-center gap-3">
-          <div role="radiogroup" aria-label="Rating" className="flex gap-1" onMouseLeave={() => setHover(0)}>
+          <div
+            role="radiogroup" aria-label="Rating" data-field="rating" aria-invalid={checks.errors.rating ? true : undefined}
+            aria-describedby={checks.errors.rating ? 'rating-error' : undefined} className="flex gap-1" onMouseLeave={() => setHover(0)}
+          >
             {[1, 2, 3, 4, 5].map(n => (
               <button
                 key={n}
@@ -144,7 +226,10 @@ export function ReviewForm({ slug, title }: { slug: string; title: string }) {
                 role="radio"
                 aria-checked={rating === n}
                 aria-label={`${n} star${n > 1 ? 's' : ''}, ${RATING_LABELS[n]}`}
-                onClick={() => setRating(n)}
+                onClick={() => {
+                  setRating(n)
+                  checks.recheck('rating', String(n))
+                }}
                 onMouseEnter={() => setHover(n)}
                 className={`grid size-11 place-items-center rounded-lg transition-colors ${n <= shown ? 'bg-star text-white' : 'bg-zinc-100 text-zinc-300 hover:bg-zinc-200'}`}
               >
@@ -154,100 +239,143 @@ export function ReviewForm({ slug, title }: { slug: string; title: string }) {
           </div>
           <span className="text-sm font-medium text-zinc-600">{RATING_LABELS[shown]}</span>
         </div>
+        {checks.errors.rating && <FieldError id="rating-error">{checks.errors.rating}</FieldError>}
       </div>
       <Field
-        label="Your review" name="text" textarea required minLength={50} maxLength={5000} rows={8} values={state?.values}
+        label="Your review" name="text" textarea required maxLength={5000} rows={8} values={state?.values}
         placeholder="What did you like or dislike? How were the service, price and quality? Tell other customers what to expect."
         hint="At least 50 characters. Keep it honest, helpful and about your own experience."
       />
       <div className="grid gap-4 sm:grid-cols-2">
         <Field label="Your name" name="name" required maxLength={80} autoComplete="name" values={state?.values} hint="Shown with your review." />
-        <Field label="Email" name="email" type="email" required autoComplete="email" values={state?.values} hint="Never shown publicly." />
+        <Field label="Email" name="email" type="email" required maxLength={254} autoComplete="email" values={state?.values} hint="Never shown publicly." />
       </div>
       <Honeypot />
       <ErrorNote state={state} />
-      <button type="submit" disabled={pending || !rating} className="btn btn-primary w-full sm:w-auto">
+      <button type="submit" disabled={pending} className="btn btn-primary w-full sm:w-auto">
         {pending ? 'Posting…' : 'Post review'}
       </button>
     </form>
+    </FormChecks>
   )
 }
 
-type ClaimTarget = { slug: string; title: string }
+type ClaimTarget = { slug: string; title: string; phone?: string }
 
-export function BusinessForm({ claim, niches }: { claim?: ClaimTarget; niches: string[] }) {
+export function BusinessForm({ claim, categories, cities }: { claim?: ClaimTarget; categories: Option[]; cities: { name: string; country: string }[] }) {
   const [state, action, pending] = useActionState(submitBusiness, null)
+  const { checks, formProps } = useChecks(
+    claim ? CLAIM_RULES : { ...LISTING_RULES, city: cityRule(cities) },
+    state?.errors,
+    (values): Record<string, string> => (claim && values.confirm !== 'on' ? { confirm: MESSAGES.confirm } : {}),
+  )
   if (state?.ok) {
     return <Success message={state.message} href={claim ? `/biz/${claim.slug}` : '/'} linkText={claim ? `Back to ${claim.title}` : 'Back to home'} />
   }
   const v = state?.values
   return (
-    <form action={action} className="space-y-10">
+    <FormChecks value={checks}>
+    <form action={action} {...formProps} className="space-y-10">
       {claim ? (
         <>
           <input type="hidden" name="claim" value={claim.slug} />
-          <Group title="Your details">
+          <Group title="About you">
             <div className="grid gap-4 sm:grid-cols-2">
-              <Field label="Your name" name="contact_name" required autoComplete="name" values={v} />
+              <Field label="Your name" name="contact_name" required maxLength={80} autoComplete="name" values={v} />
               <div>
                 <label htmlFor="role" className="label">Your role</label>
                 <select id="role" name="role" defaultValue={v?.role ?? 'Owner'} className="input">
                   <option>Owner</option>
                   <option>Manager</option>
                   <option>Employee</option>
-                  <option>Agency / marketer</option>
+                  <option>Agency or marketer</option>
                 </select>
               </div>
-              <Field label="Business email" name="email" type="email" required autoComplete="email" values={v} hint="Ideally at your website’s domain." />
-              <Field label="Phone" name="phone" type="tel" required autoComplete="tel" values={v} />
+              <Field label="Work email" name="email" type="email" required maxLength={254} autoComplete="email" values={v} hint="Only used to contact you about this claim." />
+              <Field label="Your phone number" name="phone" type="tel" required maxLength={25} autoComplete="tel" values={v} hint="In case we need to reach you." />
             </div>
           </Group>
-          <Group title="How should we verify you?">
-            {[
-              ['phone', 'Call the business', 'We’ll call the phone number on the listing.'],
-              ['email', 'Email', 'We’ll email an address at the business website’s domain.'],
-            ].map(([value, label, hint]) => (
-              <label key={value} className="card flex cursor-pointer items-start gap-3 p-4 has-checked:border-brand-600 has-checked:bg-brand-50">
-                <input type="radio" name="verify" value={value} defaultChecked={(v?.verify || 'phone') === value} className="mt-1 accent-brand-600" />
-                <span>
-                  <span className="block font-medium">{label}</span>
-                  <span className="text-sm text-zinc-600">{hint}</span>
-                </span>
-              </label>
-            ))}
+          <Group title="How should we confirm it’s you?">
+            <div className="grid gap-3 sm:grid-cols-2">
+              {[
+                { value: 'phone', Icon: PhoneIcon, title: 'Phone call', text: claim.phone ? `We’ll call the business on ${claim.phone} and ask for you.` : 'We’ll call the number on the listing and ask for you.' },
+                { value: 'email', Icon: MailIcon, title: 'Email', text: 'We’ll email your work address. One at your website’s domain is quickest.' },
+              ].map(({ value, Icon, title, text }) => (
+                <label key={value} className="card flex cursor-pointer flex-col gap-3 p-4 transition-colors hover:border-zinc-300 has-checked:border-brand-600 has-checked:bg-brand-50 has-checked:ring-1 has-checked:ring-brand-600">
+                  <span className="flex items-center justify-between">
+                    <span className="grid size-10 place-items-center rounded-xl bg-white text-brand-700 ring-1 ring-zinc-200">
+                      <Icon width={18} height={18} />
+                    </span>
+                    <input type="radio" name="verify" value={value} defaultChecked={(v?.verify || 'phone') === value} className="size-4 accent-brand-600" />
+                  </span>
+                  <span>
+                    <span className="block font-semibold text-zinc-900">{title}</span>
+                    <span className="mt-0.5 block text-sm text-zinc-600">{text}</span>
+                  </span>
+                </label>
+              ))}
+            </div>
           </Group>
-          <Field label="Anything we should know?" name="note" textarea values={v} placeholder="e.g. the phone number or hours on the listing are out of date" />
-          <label className="flex items-start gap-3 text-sm">
-            <input type="checkbox" name="confirm" required className="mt-0.5 size-4 accent-brand-600" />
-            I confirm I’m the owner of this business or authorised to manage its listing.
-          </label>
+          <Field label="Anything we should update?" name="note" textarea maxLength={1000} values={v} placeholder="For example: our phone number has changed, or we now open at 8 AM." />
+          <div>
+            <label className="flex items-start gap-3 text-sm text-zinc-700">
+              <input
+                type="checkbox" name="confirm" required className="mt-0.5 size-4 accent-brand-600"
+                aria-invalid={checks.errors.confirm ? true : undefined} aria-describedby={checks.errors.confirm ? 'confirm-error' : undefined}
+              />
+              I’m the owner of this business, or I’m authorised to manage its listing.
+            </label>
+            {checks.errors.confirm && <FieldError id="confirm-error">{checks.errors.confirm}</FieldError>}
+          </div>
         </>
       ) : (
         <>
+          <Group title="Free or instant?">
+            <div className="grid gap-3 sm:grid-cols-2">
+              <label className="card flex cursor-pointer flex-col gap-2 p-4 has-checked:border-brand-600 has-checked:bg-brand-50 has-checked:ring-1 has-checked:ring-brand-600">
+                <span className="flex items-center justify-between">
+                  <span className="font-semibold text-zinc-900">Free listing</span>
+                  <input type="radio" name="plan" value="free" defaultChecked className="size-4 accent-brand-600" />
+                </span>
+                <span className="text-2xl font-bold tracking-tight text-zinc-900">Free</span>
+                <span className="text-sm text-zinc-600">We check every new listing by hand, so it usually goes live within a few days.</span>
+              </label>
+              {/* Not selectable until payments are set up. */}
+              <div aria-disabled="true" className="card flex cursor-not-allowed flex-col gap-2 p-4">
+                <span className="flex items-center justify-between">
+                  <span className="font-semibold text-zinc-900">Instant listing</span>
+                  <span className="rounded-full bg-brand-50 px-2.5 py-0.5 text-xs font-semibold text-brand-700 ring-1 ring-brand-100">Coming soon</span>
+                </span>
+                <span className="text-2xl font-bold tracking-tight text-zinc-900">
+                  $5 <span className="text-sm font-medium text-zinc-500">one-time</span>
+                </span>
+                <span className="text-sm text-zinc-600">Goes live the moment you pay. No subscription, and it doesn’t change your ranking.</span>
+              </div>
+            </div>
+          </Group>
           <Group title="Business details">
-            <Field label="Business name" name="name" required values={v} />
-            <Field label="Category" name="category" required list="niches" values={v} placeholder="e.g. Dentist" />
-            <datalist id="niches">
-              {niches.map(n => <option key={n} value={n} />)}
-            </datalist>
-            <Field label="Description" name="description" textarea values={v} placeholder="What you offer, what makes you different" />
+            <Field label="Business name" name="name" required maxLength={120} values={v} />
+            <AutoField label="Category" name="category" kind="what" heading="Popular categories" options={categories} values={v}
+              placeholder="e.g. Dentist" hint="Pick one from the list, or type your own." />
+            <Field label="Description" name="description" textarea maxLength={1000} values={v} placeholder="What you offer, what makes you different" />
           </Group>
           <Group title="Location & contact">
-            <Field label="Street address" name="address" required autoComplete="street-address" values={v} />
+            <Field label="Street address" name="address" required maxLength={200} autoComplete="street-address" values={v} />
             <div className="grid gap-4 sm:grid-cols-2">
-              <Field label="Neighbourhood / area" name="area" values={v} placeholder="e.g. Kothrud" />
-              <Field label="City" name="city" required autoComplete="address-level2" values={v} />
-              <Field label="Phone" name="phone" type="tel" autoComplete="tel" values={v} />
-              <Field label="Website" name="website" type="url" values={v} placeholder="https://" />
+              <Field label="Neighbourhood / area" name="area" maxLength={80} values={v} placeholder="e.g. Kothrud" />
+              <AutoField label="City" name="city" kind="where" heading="Popular cities" options={cities.map(c => ({ label: `${c.name}, ${c.country}` }))} values={v}
+                placeholder="Start typing your city" hint={`We cover ${cities.length} cities. Pick yours from the list.`} />
+              <Field label="Phone" name="phone" type="tel" maxLength={25} autoComplete="tel" values={v} />
+              <Field label="Website" name="website" type="url" maxLength={200} values={v} placeholder="example.com" />
             </div>
           </Group>
           <Group title="Opening hours">
-            <Field label="Hours" name="hours" textarea values={v} placeholder={'Mon–Fri 9 AM–6 PM\nSat 10 AM–2 PM\nSun closed'} />
+            <Field label="Hours" name="hours" textarea maxLength={500} values={v} placeholder={'Mon–Fri 9 AM–6 PM\nSat 10 AM–2 PM\nSun closed'} />
           </Group>
           <Group title="About you">
             <div className="grid gap-4 sm:grid-cols-2">
-              <Field label="Your name" name="contact_name" required autoComplete="name" values={v} />
-              <Field label="Email" name="email" type="email" required autoComplete="email" values={v} hint="Never shown publicly." />
+              <Field label="Your name" name="contact_name" required maxLength={80} autoComplete="name" values={v} />
+              <Field label="Email" name="email" type="email" required maxLength={254} autoComplete="email" values={v} hint="Never shown publicly." />
             </div>
             <div>
               <label htmlFor="relationship" className="label">Your relationship to the business</label>
@@ -262,18 +390,50 @@ export function BusinessForm({ claim, niches }: { claim?: ClaimTarget; niches: s
       )}
       <Honeypot />
       <ErrorNote state={state} />
-      <button type="submit" disabled={pending} className="btn btn-primary w-full sm:w-auto">
-        {pending ? 'Sending…' : claim ? 'Submit claim' : 'Add business'}
-      </button>
+      <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:gap-4">
+        <button type="submit" disabled={pending} className="btn btn-primary w-full sm:w-auto">
+          {pending ? 'Sending…' : claim ? 'Claim this business' : 'Add business'}
+        </button>
+        {claim && <p className="text-sm text-zinc-500">Free. Nothing on your page changes until we’ve confirmed it’s you.</p>}
+      </div>
     </form>
+    </FormChecks>
   )
 }
 
-// The home page has its own big search, so the header one steps aside there.
-// (A pathname check, not CSS :has(): the home page stays in the DOM, hidden, after you navigate away.)
+// The home page has its own big search, so the header one steps aside there and the capsule closes up around the
+// rest. (A pathname check, not CSS :has(): the home page stays in the DOM, hidden, after you navigate away.)
+// Fixed widths, because the capsule is only as wide as its contents: there's no spare room to stretch into.
 export function HeaderSearch({ children }: { children: ReactNode }) {
   const home = usePathname() === '/'
-  return <div className={`mx-3 hidden max-w-md flex-1 md:block ${home ? 'invisible' : ''}`}>{children}</div>
+  return home ? null : <div className="hidden lg:block lg:w-[22rem] xl:w-[34rem]">{children}</div>
+}
+
+// A menu in the home page's category row (components/CategoryNav.tsx). Its panel opens from the label's left edge and
+// moves left only as far as it must to stay on screen, measured each time it opens, so it fits any width. Shown while
+// hovered, or while it has keyboard focus (focus-visible, so a mouse click doesn't leave it stuck open). An invisible
+// strip (before:) bridges the gap so the pointer can reach the panel.
+export function HoverMenu({ label, href, children }: { label: string; href: string; children: ReactNode }) {
+  function place(e: SyntheticEvent<HTMLDivElement>) {
+    const panel = e.currentTarget.lastElementChild as HTMLElement
+    const spill = e.currentTarget.getBoundingClientRect().left + panel.offsetWidth - (document.documentElement.clientWidth - 16)
+    panel.style.left = `${-Math.max(0, Math.ceil(spill))}px`
+  }
+  return (
+    <div onMouseEnter={place} onFocus={place} className="group/menu relative flex h-full items-center">
+      <Link
+        href={href}
+        className="flex items-center gap-1 rounded-full px-3 py-1.5 text-sm font-medium whitespace-nowrap text-white/85 transition-colors group-hover/menu:bg-white/10 group-hover/menu:text-white"
+      >
+        {label}
+        {/* Flips without animating, so it never shows half-turned. */}
+        <ChevronDownIcon width={14} height={14} className="text-white/60 group-hover/menu:rotate-180" />
+      </Link>
+      <div className="invisible absolute top-full left-0 z-50 mt-1.5 w-[36rem] rounded-2xl border border-zinc-200 bg-white p-2.5 opacity-0 shadow-2xl shadow-black/25 transition duration-150 before:absolute before:inset-x-0 before:bottom-full before:h-2 group-hover/menu:visible group-hover/menu:opacity-100 group-has-[:focus-visible]/menu:visible group-has-[:focus-visible]/menu:opacity-100">
+        {children}
+      </div>
+    </div>
+  )
 }
 
 // ---------- Cities page directory ----------
@@ -281,8 +441,6 @@ export function HeaderSearch({ children }: { children: ReactNode }) {
 export type DirectoryCountry = { name: string; code: string; cities: { name: string; slug: string; count: number }[] }
 export type DirectoryRegion = { name: string; slug: string; countries: DirectoryCountry[] }
 
-// Lower case without accents, so "sao paulo" finds São Paulo.
-const fold = (s: string) => s.normalize('NFD').replace(/\p{M}/gu, '').toLowerCase()
 
 // Region jump links and a live filter over the country cards. Typing a country shows all its cities.
 export function CityDirectory({ regions }: { regions: DirectoryRegion[] }) {
@@ -299,7 +457,7 @@ export function CityDirectory({ regions }: { regions: DirectoryRegion[] }) {
 
   return (
     <>
-      <div className="sticky top-16 z-20 -mx-4 flex flex-col gap-3 border-b border-zinc-200 bg-page/90 px-4 py-3 backdrop-blur-xl sm:flex-row sm:items-center">
+      <div className="sticky top-[var(--header-h)] z-20 -mx-4 flex flex-col gap-3 border-b border-zinc-200 bg-white/90 px-4 py-3 backdrop-blur-xl sm:flex-row sm:items-center">
         <label className="relative shrink-0 sm:w-80">
           <span className="sr-only">Find a city or country</span>
           <SearchIcon width={18} height={18} className="pointer-events-none absolute top-1/2 left-3.5 -translate-y-1/2 text-zinc-400" />
@@ -311,7 +469,7 @@ export function CityDirectory({ regions }: { regions: DirectoryRegion[] }) {
       </div>
 
       {shown.map(r => (
-        <section key={r.slug} id={r.slug} className="mt-10 scroll-mt-48 sm:scroll-mt-36">
+        <section key={r.slug} id={r.slug} className="mt-10 scroll-mt-[calc(var(--header-h)_+_8.25rem)] sm:scroll-mt-[calc(var(--header-h)_+_5.25rem)]">
           <div className="flex flex-wrap items-baseline gap-x-3 gap-y-1">
             <h2 className="font-display text-2xl font-bold tracking-tight">{r.name}</h2>
             <p className="text-sm text-zinc-500">
@@ -366,34 +524,5 @@ function CountryCard({ c, expanded }: { c: DirectoryCountry; expanded: boolean }
         </button>
       )}
     </section>
-  )
-}
-
-// ---------- Light / dark switch ----------
-
-// The theme lives on <html data-theme>; the script in app/layout.tsx applies the saved choice before the first paint.
-// The icon follows the attribute through CSS (dark:), so nothing here depends on state.
-export function ThemeToggle({ className = '' }: { className?: string }) {
-  // React's development remount resets <html> attributes, so put the saved choice back (a no-op in production).
-  useLayoutEffect(() => {
-    try {
-      const saved = localStorage.getItem('theme')
-      if (saved) document.documentElement.dataset.theme = saved
-    } catch {}
-  }, [])
-
-  const toggle = () => {
-    const next = document.documentElement.dataset.theme === 'dark' ? 'light' : 'dark'
-    document.documentElement.dataset.theme = next
-    try {
-      localStorage.setItem('theme', next)
-    } catch {}
-  }
-
-  return (
-    <button type="button" onClick={toggle} aria-label="Switch between light and dark mode" title="Light / dark mode" className={className}>
-      <Moon size={18} className="dark:hidden" />
-      <Sun size={18} className="hidden dark:block" />
-    </button>
   )
 }

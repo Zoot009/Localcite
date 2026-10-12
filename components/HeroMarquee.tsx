@@ -18,7 +18,7 @@ export function HeroMarquee({ picks, place }: { picks: Business[]; place?: strin
   const half = Math.ceil(picks.length / 2)
   return (
     <div className="group relative hidden lg:block">
-      <div aria-hidden className="absolute -inset-10 rounded-full bg-accent-500/25 blur-3xl" />
+      <div aria-hidden className="absolute -inset-10 bg-[radial-gradient(closest-side,rgb(139_92_246/0.25),transparent)]" />
       <div className="relative grid h-[34rem] grid-cols-2 gap-4 overflow-hidden [mask-image:linear-gradient(to_bottom,transparent,black_12%,black_88%,transparent)]">
         <Column items={picks.slice(0, half)} direction="up" />
         <Column items={picks.slice(half)} direction="down" />

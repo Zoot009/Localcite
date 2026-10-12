@@ -19,7 +19,7 @@ export default function AboutPage() {
         can pay to rank higher.
       </p>
 
-      <section id="how-it-works" className="mt-12 scroll-mt-32">
+      <section id="how-it-works" className="mt-12 scroll-mt-[calc(var(--header-h)_+_1.25rem)]">
         <h2 className="section-title">How it works</h2>
         <div className="mt-4 space-y-4 text-zinc-700">
           <p>
@@ -38,7 +38,7 @@ export default function AboutPage() {
         </div>
       </section>
 
-      <section id="guidelines" className="mt-12 scroll-mt-32">
+      <section id="guidelines" className="mt-12 scroll-mt-[calc(var(--header-h)_+_1.25rem)]">
         <h2 className="section-title">Content guidelines</h2>
         <ul className="mt-4 list-disc space-y-2 pl-5 text-zinc-700">
           <li>Reviews must describe your own, first-hand experience with the business.</li>
@@ -50,7 +50,7 @@ export default function AboutPage() {
         <p className="mt-4 text-zinc-700">We check reviews before they’re published and remove ones that break these rules.</p>
       </section>
 
-      <section id="contact" className="mt-12 scroll-mt-32">
+      <section id="contact" className="mt-12 scroll-mt-[calc(var(--header-h)_+_1.25rem)]">
         <h2 className="section-title">Contact</h2>
         <p className="mt-4 text-zinc-700">
           Questions, corrections or removal requests: <a href={`mailto:${SITE.email}`} className="text-brand-700 hover:underline">{SITE.email}</a>

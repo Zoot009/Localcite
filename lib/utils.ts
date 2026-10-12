@@ -16,6 +16,9 @@ export const plural = (s: string) =>
 
 export const cityName = (city: string) => city.split(',')[0].trim()
 
+// Lower case without accents, for matching what people type: "sao paulo" finds São Paulo.
+export const fold = (s: string) => s.normalize('NFD').replace(/\p{M}/gu, '').toLowerCase().trim()
+
 // searchParams values can be string | string[] | undefined; we only ever want one string.
 export const one = (v: string | string[] | undefined) => (typeof v === 'string' ? v : undefined)
 

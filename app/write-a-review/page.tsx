@@ -44,7 +44,7 @@ async function Content({ searchParams }: Pick<PageProps<'/write-a-review'>, 'sea
   }
 
   return (
-    <div className="grid gap-10 lg:grid-cols-[1fr_300px]">
+    <div className="grid grid-cols-1 gap-10 lg:grid-cols-[minmax(0,1fr)_300px]">
       <div>
         <Link href={`/biz/${b.slug}`} className="card flex items-center gap-4 p-4 hover:bg-zinc-50">
           <BizImage biz={b} className="size-16 shrink-0 rounded-xl" />

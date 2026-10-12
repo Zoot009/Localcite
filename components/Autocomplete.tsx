@@ -2,10 +2,12 @@
 import { useId, useRef, useState, type KeyboardEvent } from 'react'
 import { PinIcon, SearchIcon } from './icons'
 
-export type Option = { label: string; hint?: string }
+// `point` is a city's [latitude, longitude], so "Current location" can find the nearest one.
+export type Option = { label: string; hint?: string; point?: [number, number] }
 
 const norm = (s: string) => s.normalize('NFD').replace(/[̀-ͯ]/g, '').toLowerCase()
 const MAX = 8
+const NEARBY_KM = 100
 
 // Best matches first: starts with the query, then a word starting with it, then contains it, then the hint
 // (so typing a country lists its cities). Ties keep the caller's order, which is most popular first.
@@ -35,38 +37,70 @@ function Highlight({ text, query }: { text: string; query: string }) {
   )
 }
 
-// Search field with a styled suggestion list (ARIA combobox: ↑ ↓ to move, Enter to pick, Esc to close).
-export function Autocomplete({ id, name, kind, options, placeholder, defaultValue = '', className = '' }: {
+// Rough distance in km between two [lat, lng] points: plenty for finding the nearest city.
+function km([lat1, lng1]: [number, number], [lat2, lng2]: [number, number]) {
+  const rad = Math.PI / 180
+  return 6371 * Math.hypot((lng2 - lng1) * rad * Math.cos(((lat1 + lat2) / 2) * rad), (lat2 - lat1) * rad)
+}
+
+// Search field with a suggestion list (ARIA combobox: ↑ ↓ to move, Enter to pick, Esc to close).
+// `locate` puts a "Current location" row first: it asks the browser where you are and fills in the nearest city.
+export function Autocomplete({ id, name, kind, options, placeholder, defaultValue = '', className = '', required = false, heading, invalid, describedBy, onChoose, locate = false }: {
   id: string; name: string; kind: 'what' | 'where'; options: Option[]; placeholder: string; defaultValue?: string; className?: string
+  required?: boolean; heading?: string; invalid?: boolean; describedBy?: string; onChoose?: (value: string) => void; locate?: boolean
 }) {
   const listId = useId()
   const input = useRef<HTMLInputElement>(null)
   const [value, setValue] = useState(defaultValue)
   const [open, setOpen] = useState(false)
   const [active, setActive] = useState(-1)
-  const results = rank(options, value)
-  const show = open && results.length > 0
-  const Icon = kind === 'where' ? PinIcon : SearchIcon
+  const [status, setStatus] = useState('') // "Current location": '' | 'busy' | why it didn't work
+  const rows: (Option | 'here')[] = [...(locate ? ['here' as const] : []), ...rank(options, value)]
+  const show = open && rows.length > 0
 
   function choose(o: Option) {
     setValue(o.label)
+    onChoose?.(o.label)
     setOpen(false)
     setActive(-1)
+    setStatus('')
     // Picked what you want: carry on to "where".
     if (kind === 'what') input.current?.form?.querySelector<HTMLInputElement>('input[name=loc]')?.focus()
   }
+
+  function findMe() {
+    if (!navigator.geolocation) return setStatus('Your browser can’t share its location.')
+    setStatus('busy')
+    navigator.geolocation.getCurrentPosition(
+      ({ coords }) => {
+        const here: [number, number] = [coords.latitude, coords.longitude]
+        let nearest: Option | undefined
+        let best = Infinity
+        for (const o of options) {
+          const d = o.point ? km(here, o.point) : Infinity
+          if (d < best) [nearest, best] = [o, d]
+        }
+        if (nearest && best <= NEARBY_KM) choose(nearest)
+        else setStatus('We don’t list any cities near you yet.')
+      },
+      () => setStatus('Couldn’t get your location. Allow location access and try again.'),
+      { timeout: 10_000, maximumAge: 600_000 },
+    )
+  }
+
+  const pick = (row: Option | 'here') => (row === 'here' ? findMe() : choose(row))
 
   function onKeyDown(e: KeyboardEvent<HTMLInputElement>) {
     if (e.key === 'ArrowDown') {
       e.preventDefault()
       setOpen(true)
-      setActive(a => (a + 1) % Math.max(results.length, 1))
+      setActive(a => (a + 1) % Math.max(rows.length, 1))
     } else if (e.key === 'ArrowUp') {
       e.preventDefault()
-      setActive(a => (a <= 0 ? results.length - 1 : a - 1))
+      setActive(a => (a <= 0 ? rows.length - 1 : a - 1))
     } else if (e.key === 'Enter' && show && active >= 0) {
-      e.preventDefault() // pick the highlighted suggestion instead of submitting
-      choose(results[active])
+      e.preventDefault() // pick the highlighted row instead of submitting
+      pick(rows[active])
     } else if (e.key === 'Escape') {
       setOpen(false)
     }
@@ -80,6 +114,9 @@ export function Autocomplete({ id, name, kind, options, placeholder, defaultValu
         name={name}
         value={value}
         placeholder={placeholder}
+        required={required}
+        aria-invalid={invalid || undefined}
+        aria-describedby={describedBy}
         autoComplete="off"
         role="combobox"
         aria-expanded={show}
@@ -100,34 +137,45 @@ export function Autocomplete({ id, name, kind, options, placeholder, defaultValu
         <ul
           id={listId}
           role="listbox"
-          // Keep focus in the input while clicking a suggestion.
+          // Keep focus in the input while clicking a row.
           onPointerDown={e => e.preventDefault()}
-          className="absolute top-full left-0 z-50 mt-3 w-full min-w-[17rem] rounded-2xl bg-surface p-1.5 text-left shadow-2xl ring-1 shadow-black/25 ring-zinc-900/10"
+          className="absolute top-full left-0 z-50 mt-2 w-full min-w-[18rem] rounded-xl border border-zinc-200 bg-white p-1.5 text-left shadow-xl shadow-zinc-900/10"
         >
-          {!value.trim() && (
-            <li role="presentation" className="px-3 pt-2 pb-1 text-[11px] font-semibold tracking-wider text-zinc-400 uppercase">
-              {kind === 'where' ? 'Popular cities' : 'Popular searches'}
-            </li>
+          {heading && !value.trim() && (
+            <li role="presentation" className="px-3 pt-2 pb-1 text-[11px] font-semibold tracking-wider text-zinc-400 uppercase">{heading}</li>
           )}
-          {results.map((o, i) => (
+          {rows.map((row, i) => (
             <li
-              key={`${o.label}|${o.hint ?? ''}`}
+              key={row === 'here' ? 'here' : `${row.label}|${row.hint ?? ''}`}
               id={`${listId}-${i}`}
               role="option"
               aria-selected={i === active}
-              onClick={() => choose(o)}
+              onClick={() => pick(row)}
               onMouseEnter={() => setActive(i)}
-              className={`flex cursor-pointer items-center gap-3 rounded-xl px-3 py-2 transition-colors ${i === active ? 'bg-zinc-100' : ''}`}
+              className={`flex cursor-pointer items-center gap-3 rounded-lg px-3 py-2.5 text-sm transition-colors ${i === active ? 'bg-zinc-100' : ''}`}
             >
-              <span className={`grid size-8 shrink-0 place-items-center rounded-lg transition-colors ${i === active ? 'bg-brand-100 text-brand-700' : 'bg-zinc-100 text-zinc-500'}`}>
-                <Icon width={16} height={16} />
-              </span>
-              <span className="min-w-0">
-                <span className="block truncate text-sm text-zinc-700">
-                  <Highlight text={o.label} query={value} />
+              {row === 'here' ? (
+                <>
+                  <PinIcon width={18} height={18} className="shrink-0 text-brand-600" />
+                  <span className="min-w-0">
+                    <span className="block font-medium text-brand-700">{status === 'busy' ? 'Finding you…' : 'Current location'}</span>
+                    {status && status !== 'busy' && <span className="block text-xs text-zinc-500">{status}</span>}
+                  </span>
+                </>
+              ) : kind === 'where' ? (
+                <span className="truncate text-zinc-800">
+                  <Highlight text={row.label} query={value} />
+                  {row.hint && <span className="text-zinc-500">, {row.hint}</span>}
                 </span>
-                {o.hint && <span className="block truncate text-xs text-zinc-400">{o.hint}</span>}
-              </span>
+              ) : (
+                <>
+                  <SearchIcon width={16} height={16} className="shrink-0 text-zinc-400" />
+                  <span className="min-w-0 flex-1 truncate text-zinc-800">
+                    <Highlight text={row.label} query={value} />
+                  </span>
+                  {row.hint && <span className="shrink-0 text-xs text-zinc-400">{row.hint}</span>}
+                </>
+              )}
             </li>
           ))}
         </ul>

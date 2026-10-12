@@ -57,8 +57,7 @@ function EmbedMap({ points, className = '' }: { points: MapPoint[]; className?: 
       src={`https://maps.google.com/maps?q=${encodeURIComponent(query)}&z=15&output=embed`}
       loading="lazy"
       referrerPolicy="no-referrer-when-downgrade"
-      // Google's embed has no dark style; inverting it (and turning the hues back) gives a dark map.
-      className={`w-full rounded-2xl border-0 bg-zinc-100 ring-1 ring-zinc-200 dark:hue-rotate-180 dark:invert-[0.9] ${className}`}
+      className={`w-full rounded-2xl border-0 bg-zinc-100 ring-1 ring-zinc-200 ${className}`}
     />
   )
 }

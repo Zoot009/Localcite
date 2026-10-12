@@ -13,7 +13,7 @@ export const metadata: Metadata = {
 }
 
 const BENEFITS = [
-  { Icon: CheckCircleIcon, title: 'Free, forever', text: 'No subscriptions, no ads, no pay-to-rank. Every listing is free.' },
+  { Icon: CheckCircleIcon, title: 'Free to list', text: 'No subscriptions, no ads, no pay-to-rank. Instant listing for a one-time $5 is coming soon.' },
   { Icon: PinIcon, title: 'Consistent NAP', text: 'The same name, address and phone everywhere helps you rank in local search.' },
   { Icon: GlobeIcon, title: 'Link to your website', text: 'Every listing links straight to your site so customers and search engines can find it.' },
   { Icon: ClockIcon, title: 'Hours & services', text: 'Show customers when you’re open and what you offer before they call.' },
@@ -22,9 +22,9 @@ const BENEFITS = [
 ]
 
 const FAQ = [
-  ['Is it really free?', `Yes. ${SITE.name} has no paid plans, ads or sponsored placements. Rankings are based only on ratings and reviews.`],
+  ['Is it really free?', 'Yes. Adding and claiming a business is free. Soon you’ll also be able to pay a one-time $5 to go live instantly instead of waiting for our check. Nobody can pay to rank higher: rankings are based only on ratings and reviews.'],
   ['How do you verify I own the business?', 'We call the phone number on your listing or email an address at your website’s domain.'],
-  ['My business isn’t listed. What do I do?', 'Use the Add a business form. We review new listings before they go live.'],
+  ['My business isn’t listed. What do I do?', 'Use the Add a business form. Free listings go live once we’ve checked them, usually within a few days.'],
   ['Where does the listing information come from?', 'Public sources such as maps and business websites, plus updates from owners and customers.'],
   ['Can I remove my listing?', `Yes. Email ${SITE.email} from an address at your business and we’ll take it down.`],
 ]
@@ -32,7 +32,7 @@ const FAQ = [
 export default function ForBusinessPage({ searchParams }: PageProps<'/for-business'>) {
   return (
     <>
-      <section data-theme="light" className="relative overflow-hidden bg-brand-900 text-white">
+      <section className="relative overflow-hidden bg-brand-900 text-white">
         <div className="absolute inset-0 bg-[radial-gradient(circle_at_80%_20%,var(--glow-accent),transparent_45%),radial-gradient(circle_at_10%_90%,var(--glow-brand),transparent_40%)]" />
         <div className="relative mx-auto max-w-7xl px-4 py-20 sm:py-24">
           <p className="flex items-center gap-2 text-sm font-semibold text-brand-200"><ShieldIcon width={16} height={16} /> {SITE.name} for businesses</p>
@@ -60,7 +60,7 @@ export default function ForBusinessPage({ searchParams }: PageProps<'/for-busine
         </div>
       </section>
 
-      <section id="claim" className="scroll-mt-28 bg-zinc-50 py-16">
+      <section id="claim" className="scroll-mt-[calc(var(--header-h)_+_1.25rem)] bg-zinc-50 py-16">
         <div className="mx-auto max-w-3xl px-4">
           <h2 className="section-title">Find your business</h2>
           <p className="mt-2 text-zinc-600">Search for your business, then claim it to manage the listing.</p>
@@ -94,7 +94,7 @@ export default function ForBusinessPage({ searchParams }: PageProps<'/for-busine
         </ol>
       </section>
 
-      <section id="faq" className="mx-auto max-w-3xl scroll-mt-28 px-4 pb-8">
+      <section id="faq" className="mx-auto max-w-3xl scroll-mt-[calc(var(--header-h)_+_1.25rem)] px-4 pb-8">
         <h2 className="section-title">Frequently asked questions</h2>
         <div className="mt-6 divide-y divide-zinc-200 rounded-2xl border border-zinc-200">
           {FAQ.map(([q, a]) => (

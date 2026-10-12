@@ -28,15 +28,15 @@ export default async function CategoriesPage() {
         ))}
       </nav>
 
-      <div className="mt-12 grid gap-6 lg:grid-cols-2">
+      <div className="mt-12 grid grid-cols-1 gap-6 lg:grid-cols-2">
         {groups.map(g => (
-          <section key={g.slug} id={g.slug} className="card scroll-mt-32 p-6">
+          <section key={g.slug} id={g.slug} className="card scroll-mt-[calc(var(--header-h)_+_1.25rem)] p-6">
             <h2 className="flex items-center gap-3 text-xl font-bold tracking-tight">
               <GroupIcon group={g.name} size={40} />
               {g.name}
               <span className="ml-auto text-sm font-normal text-zinc-500">{g.niches.length} categories</span>
             </h2>
-            <ul className="mt-5 grid gap-1 sm:grid-cols-2">
+            <ul className="mt-5 grid grid-cols-1 gap-1 sm:grid-cols-2">
               {g.niches.map(n => (
                 <li key={n.slug}>
                   <Link href={`/search?q=${encodeURIComponent(n.name)}`} className="flex items-center gap-2.5 rounded-lg px-2.5 py-2 text-zinc-700 hover:bg-zinc-100">

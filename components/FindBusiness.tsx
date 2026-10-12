@@ -20,7 +20,7 @@ export async function FindBusiness({ action, find, hrefFor, cta }: { action: str
       {find && (
         <div className="mt-6">
           {results.length ? (
-            <ul className="divide-y divide-zinc-200 rounded-2xl border border-zinc-200 bg-surface">
+            <ul className="divide-y divide-zinc-200 rounded-2xl border border-zinc-200 bg-white">
               {results.map(b => (
                 <li key={b.key} className="flex items-center gap-4 p-4">
                   <BizImage biz={b} className="size-14 shrink-0 rounded-lg" />

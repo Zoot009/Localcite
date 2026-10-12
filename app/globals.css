@@ -19,11 +19,8 @@
   --color-accent-400: #a78bfa;
   --color-accent-500: #8b5cf6;
   --color-star: #f59e0b;
-  /* Themed in [data-theme] below: the page behind everything, and cards / menus / inputs on top of it. */
-  --color-page: #fff;
-  --color-surface: #fff;
-  --font-sans: var(--font-geist-sans), ui-sans-serif, system-ui, sans-serif;
-  --font-display: var(--font-bricolage), var(--font-geist-sans), ui-sans-serif, system-ui, sans-serif;
+  --font-sans: var(--font-jakarta), ui-sans-serif, system-ui, sans-serif;
+  --font-display: var(--font-jakarta), ui-sans-serif, system-ui, sans-serif; /* headings and the logo */
 
   /* Hero photo columns (components/HeroMarquee.tsx): each column holds its list twice, so sliding by half loops seamlessly. */
   --animate-marquee-up: marquee-up 50s linear infinite;
@@ -36,6 +33,21 @@
     from { transform: translateY(-50%); }
     to { transform: translateY(0); }
   }
+
+  /* Search box placeholder (components/ui.tsx): eight examples, each with this 24s loop, started 3s apart. One rises in
+     (0.6s), stays, and rises out (0.6s) just as the next one rises in; then it waits, hidden, for its next turn. */
+  --animate-placeholder: placeholder 24s cubic-bezier(0.65, 0, 0.35, 1) infinite backwards;
+  @keyframes placeholder {
+    0% { translate: 0 100%; opacity: 0; }
+    2.5%, 12.5% { translate: 0 0; opacity: 1; }
+    15%, 100% { translate: 0 -100%; opacity: 0; }
+  }
+}
+
+/* Height of the sticky header (components/Header.tsx): a 0.75rem gap and the 3.5rem capsule. Pages use it to slide
+   under the header, or to stop just below it. */
+:root {
+  --header-h: 4.25rem;
 }
 
 /* Soft light blooms for dark brand sections (plain CSS variables so arbitrary Tailwind values can use them). */
@@ -45,57 +57,8 @@
   --glow-warm: rgb(236 72 153 / 0.16); /* a hint of pink */
 }
 
-/* ---------- Light / dark theme ----------
-   <html data-theme> is set before paint by the script in app/layout.tsx and switched by ThemeToggle (components/client.tsx).
-   Dark mode swaps the grey scale end for end (zinc-900 text turns light, zinc-50 backgrounds turn dark) and softens the
-   indigo tints, so components keep their usual classes. Sections that are dark in both themes (the home hero, the
-   brand banners) carry data-theme="light" to keep the original values; `dark:` covers the few places that need more. */
-@custom-variant dark (&:where([data-theme='dark'] *):not(:where([data-theme='light'] *)));
-
-[data-theme='light'] {
-  color-scheme: light;
-  --color-page: #fff;
-  --color-surface: #fff;
-  --color-zinc-50: oklch(98.5% 0 0);
-  --color-zinc-100: oklch(96.7% 0.001 286.375);
-  --color-zinc-200: oklch(92% 0.004 286.32);
-  --color-zinc-300: oklch(87.1% 0.006 286.286);
-  --color-zinc-400: oklch(70.5% 0.015 286.067);
-  --color-zinc-500: oklch(55.2% 0.016 285.938);
-  --color-zinc-600: oklch(44.2% 0.017 285.786);
-  --color-zinc-700: oklch(37% 0.013 285.805);
-  --color-zinc-800: oklch(27.4% 0.006 286.033);
-  --color-zinc-900: oklch(21% 0.006 285.885);
-  --color-zinc-950: oklch(14.1% 0.005 285.823);
-  --color-brand-50: #eef2ff;
-  --color-brand-100: #e0e7ff;
-  --color-brand-700: #4338ca;
-  --color-brand-800: #3730a3;
-}
-
-[data-theme='dark'] {
-  color-scheme: dark;
-  --color-page: oklch(14.5% 0.005 286);
-  --color-surface: oklch(21% 0.006 286);
-  --color-zinc-50: oklch(17.5% 0.006 286);
-  --color-zinc-100: oklch(26% 0.006 286);
-  --color-zinc-200: oklch(30.5% 0.008 286);
-  --color-zinc-300: oklch(37% 0.013 286);
-  --color-zinc-400: oklch(55% 0.016 286);
-  --color-zinc-500: oklch(70.5% 0.015 286);
-  --color-zinc-600: oklch(79% 0.01 286);
-  --color-zinc-700: oklch(87% 0.006 286);
-  --color-zinc-800: oklch(92% 0.004 286);
-  --color-zinc-900: oklch(96.5% 0.002 286);
-  --color-zinc-950: oklch(98.5% 0 0);
-  --color-brand-50: rgb(99 102 241 / 0.14); /* tints become a soft indigo glaze */
-  --color-brand-100: rgb(99 102 241 / 0.24);
-  --color-brand-700: #a5b4fc; /* link text turns light */
-  --color-brand-800: #c7d2fe;
-}
-
 body {
-  background: var(--color-page);
+  background: #fff;
   color: var(--color-zinc-900);
 }
 
@@ -153,22 +116,89 @@ h1 {
     @apply inline-flex items-center justify-center gap-2 rounded-lg px-4 py-2.5 text-sm font-semibold transition-colors focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-brand-600 disabled:cursor-not-allowed disabled:opacity-50;
   }
   .btn-primary {
-    @apply bg-brand-600 text-white hover:bg-brand-700 dark:hover:bg-brand-500;
+    @apply bg-brand-600 text-white hover:bg-brand-700;
   }
   .btn-outline {
-    @apply border border-zinc-300 bg-surface text-zinc-800 hover:bg-zinc-50;
+    @apply border border-zinc-300 bg-white text-zinc-800 hover:bg-zinc-50;
   }
   .card {
-    @apply rounded-2xl border border-zinc-200 bg-surface;
+    @apply rounded-2xl border border-zinc-200 bg-white;
   }
   .chip {
-    @apply inline-flex items-center gap-1.5 rounded-full border border-zinc-300 bg-surface px-3.5 py-1.5 text-sm text-zinc-700 transition-colors hover:border-zinc-400 hover:bg-zinc-50;
+    @apply inline-flex items-center gap-1.5 rounded-full border border-zinc-300 bg-white px-3.5 py-1.5 text-sm text-zinc-700 transition-colors hover:border-zinc-400 hover:bg-zinc-50;
   }
   .chip-active {
     @apply border-brand-600 bg-brand-50 text-brand-800 hover:border-brand-700 hover:bg-brand-100;
   }
   .input {
-    @apply w-full rounded-lg border border-zinc-300 bg-surface px-3.5 py-2.5 text-sm text-zinc-900 placeholder:text-zinc-400 focus:border-brand-600 focus:ring-2 focus:ring-brand-100 focus:outline-none;
+    @apply w-full rounded-lg border border-zinc-300 bg-white px-3.5 py-2.5 text-sm text-zinc-900 placeholder:text-zinc-400 focus:border-brand-600 focus:ring-2 focus:ring-brand-100 focus:outline-none;
+  }
+  /* Dropdowns: browsers with customizable <select> (Chrome, Edge, Brave) draw the open list from these rules, styled
+     like the search suggestions; the others keep their built-in list. */
+  select.input,
+  select.input::picker(select) {
+    appearance: base-select;
+  }
+  select.input {
+    cursor: pointer;
+  }
+  select.input:open {
+    border-color: var(--color-brand-600);
+    box-shadow: 0 0 0 2px var(--color-brand-100);
+  }
+  /* The arrow: the site's thin chevron, not the default solid triangle. */
+  select.input::picker-icon {
+    content: '';
+    display: block;
+    width: 1rem;
+    height: 1rem;
+    background: currentColor;
+    mask: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='none' stroke='black' stroke-width='2' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpath d='m6 9 6 6 6-6'/%3E%3C/svg%3E") center / contain no-repeat;
+    color: var(--color-zinc-400);
+    transition: rotate 0.2s;
+  }
+  select.input:open::picker-icon {
+    rotate: 180deg;
+  }
+  select.input::picker(select) {
+    margin-block: 0.375rem;
+    padding: 0.375rem;
+    border: 1px solid var(--color-zinc-200);
+    border-radius: 0.875rem;
+    background: #fff;
+    box-shadow: 0 24px 48px -12px rgb(24 24 27 / 0.22);
+  }
+  select.input option {
+    display: flex;
+    align-items: center;
+    gap: 0.75rem;
+    padding: 0.625rem 0.75rem;
+    border-radius: 0.5rem;
+    color: var(--color-zinc-700);
+    cursor: pointer;
+  }
+  select.input option:hover,
+  select.input option:focus-visible {
+    background: var(--color-brand-50);
+    color: var(--color-brand-800);
+    outline: none;
+  }
+  select.input option:checked {
+    font-weight: 600;
+    color: var(--color-brand-700);
+  }
+  select.input option::checkmark {
+    order: 1; /* the tick goes on the right */
+    margin-inline-start: auto;
+    color: var(--color-brand-600);
+  }
+  /* A field that fails its check (aria-invalid, set by the forms in components/client.tsx). */
+  .input[aria-invalid='true'] {
+    border-color: var(--color-red-500);
+  }
+  .input[aria-invalid='true']:focus {
+    border-color: var(--color-red-500);
+    --tw-ring-color: var(--color-red-100);
   }
   .label {
     @apply mb-1.5 block text-sm font-medium text-zinc-800;

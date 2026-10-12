@@ -1,12 +1,12 @@
 import type { Metadata } from 'next'
-import { Bricolage_Grotesque, Geist } from 'next/font/google'
+import { Plus_Jakarta_Sans } from 'next/font/google'
 import { Footer } from '@/components/Footer'
 import { Header } from '@/components/Header'
 import { SITE } from '@/lib/site'
 import './globals.css'
 
-const geist = Geist({ variable: '--font-geist-sans', subsets: ['latin'] })
-const display = Bricolage_Grotesque({ variable: '--font-bricolage', subsets: ['latin'] }) // headings
+// One family for text, headings and the logo. Extra subsets cover place names like Kraków, Széchenyi and Hoàn Kiếm.
+const jakarta = Plus_Jakarta_Sans({ variable: '--font-jakarta', subsets: ['latin', 'latin-ext', 'vietnamese'] })
 
 export const metadata: Metadata = {
   metadataBase: new URL(SITE.url),
@@ -17,11 +17,7 @@ export const metadata: Metadata = {
 
 export default function RootLayout({ children }: LayoutProps<'/'>) {
   return (
-    // data-theme is light by default; the inline script switches to a saved "dark" choice before the first paint.
-    <html lang="en" data-theme="light" suppressHydrationWarning className={`${geist.variable} ${display.variable} h-full antialiased`}>
-      <head>
-        <script dangerouslySetInnerHTML={{ __html: `try{var t=localStorage.getItem('theme');if(t)document.documentElement.dataset.theme=t}catch(e){}` }} />
-      </head>
+    <html lang="en" className={`${jakarta.variable} h-full antialiased`}>
       <body className="flex min-h-full flex-col">
         <Header />
         <main className="flex-1">{children}</main>

@@ -1,7 +1,7 @@
 import Link from 'next/link'
 import { getCities } from '@/lib/data'
 import { SITE } from '@/lib/site'
-import { Logo } from './icons'
+import { Logo, Wordmark } from './icons'
 
 function Column({ title, links }: { title: string; links: [string, string][] }) {
   return (
@@ -26,10 +26,11 @@ export async function Footer() {
   const cities = await getCities()
   return (
     <footer className="mt-24 border-t border-zinc-200 bg-zinc-50">
-      <div className="mx-auto grid max-w-7xl gap-10 px-4 py-14 sm:grid-cols-2 lg:grid-cols-5">
+      <div className="mx-auto grid max-w-7xl gap-10 px-4 py-14 sm:grid-cols-2 lg:grid-cols-[minmax(15rem,1.4fr)_repeat(4,minmax(0,1fr))]">
         <div>
-          <Link href="/" className="flex items-center gap-2 text-lg font-bold">
-            <Logo /> {SITE.name}
+          <Link href="/" aria-label={`${SITE.name} home`} className="flex items-center gap-2.5 text-xl">
+            <Logo />
+            <Wordmark />
           </Link>
           <p className="mt-3 text-sm text-zinc-600">{SITE.tagline}. Free for customers and businesses. Rankings are never for sale.</p>
         </div>

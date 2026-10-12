@@ -2,20 +2,24 @@ import { ArrowRight, ArrowUpRight, BadgeCheck, Clock, Globe2, MapPin, Quote, Sca
 import Link from 'next/link'
 import { Suspense } from 'react'
 import { BizCard } from '@/components/biz'
-import { CategoryIcon, GroupIcon } from '@/components/CategoryIcon'
+import { CategoryIcon } from '@/components/CategoryIcon'
+import { CategoryNav } from '@/components/CategoryNav'
 import { HeroMarquee, NearbyMarquee } from '@/components/HeroMarquee'
 import { Tabs } from '@/components/client'
 import { GlobeIcon, PhoneIcon } from '@/components/icons'
 import { BizImage, CityTile, SearchForm, SectionHeader, Stars } from '@/components/ui'
-import { getCategoryGroups, getCities, getHeroPicks, getHighlights, getTopRated } from '@/lib/data'
+import { getCategoryGroups, getCategoryTiles, getCities, getHeroPicks, getHighlights, getTopRated } from '@/lib/data'
 import { SITE } from '@/lib/site'
 import type { Business } from '@/lib/types'
-import { cap, cityName, plural } from '@/lib/utils'
+import { cap, cityName, photoSize, plural } from '@/lib/utils'
 
 const fmt = (n: number) => n.toLocaleString('en-US')
 
 // Quick searches under the hero search box: a spread of everyday needs.
 const QUICK = ['restaurant', 'hotel', 'dentist', 'hair salon', 'plumber']
+
+// "Explore by category" photo tiles: everyday favourites that photograph well (every category has about as many places).
+const FEATURED = ['restaurant', 'cafe', 'hotel', 'bar', 'hair-salon', 'spa', 'gym', 'dentist']
 
 // "Top picks" tabs: [label, category slug].
 const PICKS = [
@@ -33,11 +37,12 @@ const WHY = [
 ]
 
 export default async function Home() {
-  const [cities, groups, worldPicks, highlights, ...picks] = await Promise.all([
+  const [cities, groups, worldPicks, highlights, tiles, ...picks] = await Promise.all([
     getCities(),
     getCategoryGroups(),
     getHeroPicks(),
     getHighlights(3, undefined, ['restaurant', 'cafe', 'hotel', 'bar']),
+    getCategoryTiles(FEATURED),
     ...PICKS.map(([, slug]) => getTopRated(8, undefined, [slug])),
   ])
   // Autocomplete: the quick picks first, then everything else by how many places it has; cities busiest first.
@@ -50,7 +55,7 @@ export default async function Home() {
       .flatMap(g => g.niches.map(n => ({ name: n.name, count: n.count, hint: g.name })))
       .sort((a, b) => quickRank(a.name) - quickRank(b.name) || b.count - a.count)
       .map(n => ({ label: cap(n.name), hint: n.hint })),
-    where: cities.map(c => ({ label: c.name, hint: c.country })),
+    where: cities.map(c => ({ label: c.name, hint: c.country, point: c.lat != null && c.lng != null ? [c.lat, c.lng] as [number, number] : undefined })),
   }
   const stats = [
     { Icon: Store, value: '200,000+', label: 'businesses listed' },
@@ -61,7 +66,7 @@ export default async function Home() {
   return (
     <>
       {/* ---------- Hero ---------- */}
-      <section className="relative isolate overflow-x-clip bg-brand-950">
+      <section className="relative isolate -mt-[var(--header-h)] overflow-x-clip bg-brand-950">
         {/* Background: a looping night-street video (public/hero.mp4, Mixkit free licence; off for reduced motion).
             Grey-scaled and blended by luminosity into the indigo, so it reads as one brand colour instead of mixing
             its orange lights with the tint. Darker on the left where the text sits, then the brand glows. */}
@@ -80,8 +85,14 @@ export default async function Home() {
           <div className="absolute inset-0 bg-[radial-gradient(50rem_30rem_at_15%_0%,var(--glow-accent),transparent_70%),radial-gradient(40rem_30rem_at_90%_30%,var(--glow-brand),transparent_70%),radial-gradient(30rem_18rem_at_55%_100%,var(--glow-warm),transparent_70%)] opacity-60" />
         </div>
 
-        {/* Always dark: keeps the light-theme colours in dark mode too (see the theme notes in globals.css). */}
-        <div data-theme="light" className="mx-auto grid max-w-7xl items-center gap-14 px-4 pt-16 pb-6 sm:pt-20 lg:grid-cols-[1.15fr_0.85fr]">
+        {/* Category menus (large screens), just under the header. Positioned over the hero, so its layout doesn't move. */}
+        <div className="absolute inset-x-0 top-[calc(var(--header-h)_+_0.75rem)] z-20 hidden lg:block">
+          <div className="mx-auto max-w-7xl px-4">
+            <CategoryNav groups={groups} />
+          </div>
+        </div>
+
+        <div className="mx-auto grid max-w-7xl items-center gap-14 px-4 pt-[calc(var(--header-h)_+_4.25rem)] pb-6 sm:pt-[calc(var(--header-h)_+_5.25rem)] lg:grid-cols-[1.15fr_0.85fr]">
           <div>
             <h1 className="text-[2.6rem] leading-[1.05] font-bold text-balance text-white sm:text-6xl lg:text-[4.2rem]">
               Find the best local spots, <span className="bg-gradient-to-r from-brand-300 to-accent-300 bg-clip-text text-transparent">anywhere you go.</span>
@@ -117,7 +128,7 @@ export default async function Home() {
         <div className="relative z-10 mx-auto max-w-6xl translate-y-1/2 px-4">
         <dl className="grid grid-cols-3 gap-px overflow-hidden rounded-2xl bg-zinc-200 shadow-xl shadow-zinc-900/5 ring-1 ring-zinc-200">
           {stats.map(({ Icon, value, label }) => (
-            <div key={label} className="flex items-center gap-4 bg-surface px-4 py-4 sm:px-6 sm:py-5">
+            <div key={label} className="flex items-center gap-4 bg-white px-4 py-4 sm:px-6 sm:py-5">
               <span className="hidden size-11 shrink-0 place-items-center rounded-xl bg-brand-50 text-brand-700 sm:grid"><Icon size={22} /></span>
               <div>
                 <dd className="font-display text-xl font-bold text-zinc-900 sm:text-2xl">{value}</dd>
@@ -131,38 +142,25 @@ export default async function Home() {
 
       {/* ---------- Categories ---------- */}
       <section className="mx-auto max-w-7xl px-4 pt-24 pb-20">
-        <SectionHeader eyebrow="Browse" title="What are you looking for?" sub="Every kind of local business, grouped the way you search" href="/categories" linkText="All categories" />
-        <div className="mt-10 grid grid-cols-2 gap-3 sm:gap-5 lg:grid-cols-4">
-          {groups.slice(0, 8).map(g => (
-            <div
-              key={g.slug}
-              className="group/card card relative flex flex-col p-4 transition duration-200 hover:-translate-y-1 hover:border-brand-500/40 hover:shadow-xl hover:shadow-brand-600/10 sm:p-6"
-            >
-              <div className="flex items-start justify-between gap-3">
-                <GroupIcon group={g.name} size={48} />
-                <span className="hidden size-8 place-items-center rounded-full bg-zinc-100 text-zinc-500 transition group-hover/card:bg-brand-600 group-hover/card:text-white sm:grid">
+        <SectionHeader eyebrow="Browse" title="Explore by category" sub="Everyday favourites, in 500+ cities around the world" href="/categories" linkText="All categories" />
+        <div className="mt-10 grid grid-cols-2 gap-3 sm:gap-4 lg:grid-cols-4">
+          {tiles.map(t => (
+            <Link key={t.slug} href={`/search?q=${encodeURIComponent(t.name)}`} className="group relative block aspect-[4/3] overflow-hidden rounded-2xl bg-zinc-200">
+              {t.photo && (
+                // eslint-disable-next-line @next/next/no-img-element -- remote Google photo
+                <img src={photoSize(t.photo, 640, 480)} alt="" loading="lazy" referrerPolicy="no-referrer" className="absolute inset-0 size-full object-cover transition duration-700 group-hover:scale-105" />
+              )}
+              <div className="absolute inset-0 bg-gradient-to-t from-black/80 via-black/15 to-transparent" />
+              <div className="absolute inset-x-0 bottom-0 flex items-end justify-between gap-3 p-4 sm:p-5">
+                <div className="min-w-0">
+                  <h3 className="truncate font-display text-lg font-bold text-white sm:text-xl">{cap(plural(t.name))}</h3>
+                  <p className="text-xs text-white/75 sm:text-sm">{fmt(t.count)} places</p>
+                </div>
+                <span className="hidden size-9 shrink-0 place-items-center rounded-full bg-white/15 text-white backdrop-blur transition group-hover:bg-white group-hover:text-zinc-900 sm:grid">
                   <ArrowUpRight size={16} />
                 </span>
               </div>
-              <h3 className="mt-4 leading-tight font-semibold text-zinc-900 sm:text-lg">
-                {/* Stretched link: the whole card opens the group; the chips below sit above it. */}
-                <Link href={`/categories#${g.slug}`} className="after:absolute after:inset-0 after:rounded-2xl">{g.name}</Link>
-              </h3>
-              <p className="mt-1 text-xs text-zinc-500 sm:text-sm">
-                {fmt(g.niches.reduce((s, n) => s + n.count, 0))} places · {g.niches.length} categories
-              </p>
-              <div className="relative mt-4 hidden flex-wrap gap-1.5 sm:flex">
-                {[...g.niches].sort((a, b) => b.count - a.count).slice(0, 4).map(n => (
-                  <Link
-                    key={n.slug}
-                    href={`/search?q=${encodeURIComponent(n.name)}`}
-                    className="rounded-full bg-zinc-100 px-2.5 py-1 text-xs font-medium text-zinc-700 transition-colors hover:bg-brand-50 hover:text-brand-800"
-                  >
-                    {cap(plural(n.name))}
-                  </Link>
-                ))}
-              </div>
-            </div>
+            </Link>
           ))}
         </div>
       </section>
@@ -197,24 +195,15 @@ export default async function Home() {
       {/* ---------- Cities ---------- */}
       <section className="mx-auto max-w-7xl px-4 py-20">
         <SectionHeader eyebrow="Destinations" title="Explore popular cities" sub="Top-rated businesses, neighbourhood by neighbourhood" href="/cities" linkText={`All ${cities.length} cities`} />
+        {/* The big tile and four beside it, then a row of four more on large screens. */}
         <div className="mt-10 grid auto-rows-[15rem] gap-4 sm:grid-cols-2 lg:grid-cols-4">
-          {cities.slice(0, 5).map((c, i) => <CityTile key={c.slug} c={c} big={i === 0} />)}
-        </div>
-        <div className="mt-8 flex flex-wrap gap-2">
-          {cities.slice(5, 23).map(c => (
-            <Link key={c.slug} href={`/${c.slug}`} className="chip">
-              {c.name} <span className="text-zinc-400">{c.country}</span>
-            </Link>
-          ))}
-          <Link href="/cities" className="chip chip-active">
-            All {cities.length} cities <ArrowRight size={14} />
-          </Link>
+          {cities.slice(0, 9).map((c, i) => <CityTile key={c.slug} c={c} big={i === 0} className={i >= 5 ? 'hidden lg:block' : ''} />)}
         </div>
       </section>
 
       {/* ---------- Review highlights ---------- */}
       {highlights.length > 0 && (
-        <section data-theme="light" className="bg-brand-950 py-20 text-white">
+        <section className="bg-brand-950 py-20 text-white">
           <div className="mx-auto max-w-7xl px-4">
             <p className="eyebrow text-brand-200">In their words</p>
             <h2 className="section-title mt-2 text-white">What people love about these places</h2>
@@ -258,7 +247,7 @@ export default async function Home() {
 
       {/* ---------- For business owners ---------- */}
       <section className="mx-auto max-w-7xl px-4 pb-8">
-        <div data-theme="light" className="relative isolate grid items-center gap-12 overflow-hidden rounded-[2rem] bg-gradient-to-br from-brand-700 to-brand-950 p-8 text-white sm:p-14 lg:grid-cols-2">
+        <div className="relative isolate grid items-center gap-12 overflow-hidden rounded-[2rem] bg-gradient-to-br from-brand-700 to-brand-950 p-8 text-white sm:p-14 lg:grid-cols-2">
           <div aria-hidden className="absolute -top-24 -right-24 -z-10 size-96 rounded-full bg-accent-400/30 blur-3xl" />
           <div>
             <p className="eyebrow text-brand-200">For business owners</p>

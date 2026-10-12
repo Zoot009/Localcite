@@ -29,7 +29,7 @@ export default async function CityPage({ params }: PageProps<'/[city]'>) {
 
   return (
     <>
-      <section className="border-b border-zinc-200 bg-gradient-to-b from-brand-50 to-page">
+      <section className="border-b border-zinc-200 bg-gradient-to-b from-brand-50 to-white">
         <div className="mx-auto max-w-7xl px-4 py-10 sm:py-14">
           <Breadcrumbs items={[{ name: 'Home', href: '/' }, { name: 'Cities', href: '/cities' }, { name: c.name }]} />
           <h1 className="mt-4 text-4xl font-bold tracking-tight sm:text-5xl">Discover the best of {c.name}</h1>
@@ -46,7 +46,7 @@ export default async function CityPage({ params }: PageProps<'/[city]'>) {
         <SectionHeader title={`Popular in ${c.name}`} />
         <div className="mt-8 grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
           {categories.map(l => (
-            <Link key={l.slug} href={`/${c.slug}/${l.slug}`} className="card flex items-center gap-4 p-4 transition hover:border-zinc-300 hover:shadow-lg hover:shadow-zinc-200/70">
+            <Link key={l.slug} href={`/${c.slug}/${l.slug}`} className="card flex min-w-0 items-center gap-4 p-4 transition hover:border-zinc-300 hover:shadow-lg hover:shadow-zinc-200/70">
               <CategoryIcon name={l.name} group={l.group} size={48} />
               <span className="min-w-0">
                 <span className="block font-semibold">{cap(plural(l.name))}</span>

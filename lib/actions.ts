@@ -1,65 +1,82 @@
 'use server'
-import fs from 'node:fs/promises'
-import path from 'node:path'
-import { getBusiness } from './data'
+import { getBusiness, getCities } from './data'
+import { insert, sql } from './db'
+import { CLAIM_RULES, LISTING_RULES, MESSAGES, REVIEW_RULES, check, cityRule, matchCity, websiteUrl } from './validate'
 
-export type FormState = { ok: boolean; message: string; values?: Record<string, string> } | null
+// `errors` holds a message per field, shown under that field. The browser runs the same checks first (lib/validate.ts).
+export type FormState = { ok: boolean; message: string; values?: Record<string, string>; errors?: Record<string, string> } | null
 
-const str = (fd: FormData, key: string, max = 200) => String(fd.get(key) ?? '').trim().slice(0, max)
-const EMAIL = /^[^\s@]+@[^\s@]+\.[^\s@]+$/
-const LABELS: Record<string, string> = { name: 'the business name', category: 'a category', address: 'the address', city: 'the city', contact_name: 'your name', email: 'your email', phone: 'a phone number' }
+// Trimmed form text. The rules check lengths; this cap only stops oversized posts.
+const str = (fd: FormData, key: string) => String(fd.get(key) ?? '').trim().slice(0, 10_000)
+const opt = (v: string) => v || null
+const ROLES = new Set(['Owner', 'Manager', 'Employee', 'Agency or marketer'])
+const RELATIONS = new Set(['owner', 'employee', 'customer'])
 
-// ponytail: appends to submissions/*.jsonl on local disk; serverless hosts (Vercel etc.) have read-only disks,
-// so swap this for a database before deploying there.
-async function save(file: string, entry: object) {
-  const dir = path.join(process.cwd(), 'submissions')
-  await fs.mkdir(dir, { recursive: true })
-  await fs.appendFile(path.join(dir, file), JSON.stringify({ ...entry, submitted_at: new Date().toISOString() }) + '\n')
+const invalid = (values: Record<string, string>, errors: Record<string, string>): FormState =>
+  ({ ok: false, message: 'Please fix the highlighted fields.', values, errors })
+
+// Submissions are saved to Supabase with an insert-only login (see insert in lib/db.ts) and checked by hand.
+async function save(values: Record<string, string>, message: string, query: string, params: unknown[]): Promise<FormState> {
+  try {
+    await insert(query, params)
+    return { ok: true, message }
+  } catch (err) {
+    console.error('[forms] submission not saved:', err)
+    return { ok: false, message: 'Sorry, we couldn’t save that. Please try again later.', values }
+  }
 }
 
 export async function submitReview(_: FormState, fd: FormData): Promise<FormState> {
   if (str(fd, 'company')) return { ok: true, message: 'Thanks!' } // honeypot field only bots fill in
-  const values = { text: str(fd, 'text', 5000), name: str(fd, 'name', 80), email: str(fd, 'email', 120) }
+  const values = { text: str(fd, 'text'), name: str(fd, 'name'), email: str(fd, 'email') }
   const business = await getBusiness(str(fd, 'slug'))
+  if (!business) return { ok: false, message: 'That business no longer exists.', values }
   const rating = Number(fd.get('rating'))
-  const error = !business ? 'That business no longer exists.'
-    : !Number.isInteger(rating) || rating < 1 || rating > 5 ? 'Choose a star rating.'
-    : values.text.length < 50 ? 'Your review needs at least 50 characters.'
-    : !values.name ? 'Add your name.'
-    : !EMAIL.test(values.email) ? 'Enter a valid email address.'
-    : ''
-  if (error) return { ok: false, message: error, values }
-  try {
-    await save('reviews.jsonl', { business: business!.slug, rating, ...values })
-    return { ok: true, message: 'Thanks! Your review will appear once it has been checked.' }
-  } catch {
-    return { ok: false, message: 'Sorry, we couldn’t save your review. Please try again later.', values }
-  }
+  const errors = check(REVIEW_RULES, values)
+  if (!Number.isInteger(rating) || rating < 1 || rating > 5) errors.rating = MESSAGES.rating
+  if (Object.keys(errors).length) return invalid(values, errors)
+  return save(values, 'Thanks! Your review will appear once it has been checked.',
+    'insert into user_reviews (business_id, rating, body, author_name, author_email) values ($1, $2, $3, $4, $5)',
+    [business.key, rating, values.text, values.name, values.email])
 }
 
 export async function submitBusiness(_: FormState, fd: FormData): Promise<FormState> {
   if (str(fd, 'company')) return { ok: true, message: 'Thanks!' }
   const claim = str(fd, 'claim')
-  const long = new Set(['description', 'hours', 'note'])
-  const keys = claim
-    ? ['contact_name', 'role', 'email', 'phone', 'verify', 'note']
-    : ['name', 'category', 'address', 'area', 'city', 'phone', 'website', 'hours', 'description', 'contact_name', 'email', 'relationship']
-  const values = Object.fromEntries(keys.map(k => [k, str(fd, k, long.has(k) ? 2000 : 200)]))
-  const missing = (claim ? ['contact_name', 'email', 'phone'] : ['name', 'category', 'address', 'city', 'contact_name', 'email']).find(k => !values[k])
-  const error = claim && !(await getBusiness(claim)) ? 'That business no longer exists.'
-    : missing ? `Please add ${LABELS[missing]}.`
-    : !EMAIL.test(values.email) ? 'Enter a valid email address.'
-    : values.website && !/^https?:\/\/\S+\.\S+/i.test(values.website) ? 'The website should start with http:// or https://'
-    : claim && fd.get('confirm') !== 'on' ? 'Please confirm you’re authorised to manage this business.'
-    : ''
-  if (error) return { ok: false, message: error, values }
+
+  if (claim) {
+    const values = Object.fromEntries(['contact_name', 'role', 'email', 'phone', 'verify', 'note'].map(k => [k, str(fd, k)]))
+    const business = await getBusiness(claim)
+    if (!business) return { ok: false, message: 'That business no longer exists.', values }
+    const errors = check(CLAIM_RULES, values)
+    if (fd.get('confirm') !== 'on') errors.confirm = MESSAGES.confirm
+    if (Object.keys(errors).length) return invalid(values, errors)
+    const byEmail = values.verify === 'email'
+    return save(values, byEmail ? 'Claim received! We’ll email you to confirm it’s you.' : 'Claim received! We’ll call the business to confirm it’s you.',
+      'insert into claim_requests (business_id, contact_name, role, email, phone, verify_by, note) values ($1, $2, $3, $4, $5, $6, $7)',
+      [business.key, values.contact_name, ROLES.has(values.role) ? values.role : 'Owner', values.email, values.phone, byEmail ? 'email' : 'phone', opt(values.note)])
+  }
+
+  const keys = ['name', 'category', 'address', 'area', 'city', 'phone', 'website', 'hours', 'description', 'contact_name', 'email', 'relationship']
+  const values = Object.fromEntries(keys.map(k => [k, str(fd, k)]))
+  const cities = await getCities()
+  const errors = check({ ...LISTING_RULES, city: cityRule(cities) }, values)
+  if (Object.keys(errors).length) return invalid(values, errors)
+  // A category we list is saved by id. Anything else is kept as typed, and we pick the nearest category when we review it.
+  let category: { id: string } | undefined
   try {
-    await save(claim ? 'claims.jsonl' : 'businesses.jsonl', claim ? { business: claim, ...values } : values)
-    return {
-      ok: true,
-      message: claim ? 'Thanks! We’ll contact you to verify that you manage this business.' : 'Thanks! We’ll review the details and publish the listing once it’s verified.',
-    }
-  } catch {
+    ;[category] = await sql<{ id: string }>('select id from categories where lower(name) = lower($1)', [values.category])
+  } catch (err) {
+    console.error('[forms] category lookup failed:', err)
     return { ok: false, message: 'Sorry, we couldn’t save that. Please try again later.', values }
   }
+  return save(values, 'Thanks! We’ll check your listing by hand and publish it, usually within a few days.',
+    `insert into listing_requests (plan, name, category_id, other_category, city_id, address, area, phone, website, hours, description,
+       submitter_name, submitter_email, relation)
+     values ('free', $1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13)`,
+    [
+      values.name, category?.id ?? null, category ? null : values.category, matchCity(cities, values.city)!.id, values.address, opt(values.area),
+      opt(values.phone), websiteUrl(values.website), opt(values.hours), opt(values.description), values.contact_name, values.email,
+      RELATIONS.has(values.relationship) ? values.relationship : 'owner',
+    ])
 }

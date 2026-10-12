@@ -1,8 +1,8 @@
 export const SITE = {
-  name: 'LocalCite',
+  name: 'CityServiceListing',
   tagline: 'Find trusted local businesses near you',
-  url: 'https://example.com', // your domain, no trailing slash
-  email: 'hello@example.com',
+  url: 'https://cityservicelisting.com', // your domain, no trailing slash
+  email: 'hello@cityservicelisting.com',
 }
 
 // Thin pages hurt the whole site (Google's "scaled content" policy), so only publish pages with enough listings.

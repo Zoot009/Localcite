@@ -35,7 +35,7 @@ export function ListingSkeleton() {
 export function CitySkeleton() {
   return (
     <div aria-busy="true" aria-label="Loading">
-      <div className="border-b border-zinc-200 bg-gradient-to-b from-brand-50 to-page">
+      <div className="border-b border-zinc-200 bg-gradient-to-b from-brand-50 to-white">
         <div className="mx-auto max-w-7xl px-4 py-10 sm:py-14">
           <Bar className="h-4 w-40" />
           <Bar className="mt-5 h-11 w-full max-w-lg" />
@@ -61,7 +61,7 @@ export function CitySkeleton() {
 export function BizSkeleton() {
   return (
     <div aria-busy="true" aria-label="Loading">
-      <div data-theme="light" className="h-72 animate-pulse bg-zinc-800 sm:h-96" />
+      <div className="-mt-[var(--header-h)] h-[calc(var(--header-h)_+_18rem)] animate-pulse bg-zinc-800 sm:h-[calc(var(--header-h)_+_24rem)]" />
       <div className="mx-auto grid max-w-7xl grid-cols-[minmax(0,1fr)] gap-10 px-4 py-6 lg:grid-cols-[minmax(0,1fr)_360px]">
         <div className="space-y-4">
           <div className="flex gap-3">

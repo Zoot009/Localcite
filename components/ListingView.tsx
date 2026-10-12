@@ -78,7 +78,7 @@ export async function ListingView({ listing, items, areas, area }: { listing: Li
             </li>
           ))}
         </ol>
-        <aside className="space-y-6 lg:sticky lg:top-24 lg:self-start">
+        <aside className="space-y-6 lg:sticky lg:top-[calc(var(--header-h)_+_1.25rem)] lg:self-start">
           <ResultsMap points={mapPoints(items, 1)} className="h-[26rem]" />
           {related.length > 0 && (
             <div className="card p-5">

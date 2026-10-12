@@ -1,4 +1,5 @@
 import type { ReactNode, SVGProps } from 'react'
+import { SITE } from '@/lib/site'
 
 type P = SVGProps<SVGSVGElement>
 
@@ -14,6 +15,7 @@ const icon = (paths: ReactNode) =>
 export const SearchIcon = icon(<><circle cx="11" cy="11" r="8" /><path d="m21 21-4.3-4.3" /></>)
 export const PinIcon = icon(<><path d="M20 10c0 6-8 12-8 12s-8-6-8-12a8 8 0 0 1 16 0Z" /><circle cx="12" cy="10" r="3" /></>)
 export const PhoneIcon = icon(<path d="M22 16.92v3a2 2 0 0 1-2.18 2 19.79 19.79 0 0 1-8.63-3.07 19.5 19.5 0 0 1-6-6 19.79 19.79 0 0 1-3.07-8.67A2 2 0 0 1 4.11 2h3a2 2 0 0 1 2 1.72 12.84 12.84 0 0 0 .7 2.81 2 2 0 0 1-.45 2.11L8.09 9.91a16 16 0 0 0 6 6l1.27-1.27a2 2 0 0 1 2.11-.45 12.84 12.84 0 0 0 2.81.7A2 2 0 0 1 22 16.92z" />)
+export const MailIcon = icon(<><rect x="2" y="4" width="20" height="16" rx="2" /><path d="m22 7-8.97 5.7a1.94 1.94 0 0 1-2.06 0L2 7" /></>)
 export const GlobeIcon = icon(<><circle cx="12" cy="12" r="10" /><path d="M2 12h20" /><path d="M12 2a15.3 15.3 0 0 1 4 10 15.3 15.3 0 0 1-4 10 15.3 15.3 0 0 1-4-10 15.3 15.3 0 0 1 4-10z" /></>)
 export const ClockIcon = icon(<><circle cx="12" cy="12" r="10" /><path d="M12 6v6l4 2" /></>)
 export const DirectionsIcon = icon(<path d="M3 11l19-9-9 19-2-8-8-2z" />)
@@ -40,14 +42,26 @@ export function StarIcon(p: P) {
   )
 }
 
-// Brand mark: a white map pin on a solid indigo tile. The pin is a circle whose bottom quarter comes to a point,
-// with a round hole (evenodd) the tile shows through. Same mark as the favicon, app/icon.svg.
+// Brand mark: a white map pin with a check (a place you can trust) on a solid indigo tile. The pin is a circle whose
+// bottom quarter comes to a point; the check is drawn in the tile colour. Same mark as the favicon, app/icon.svg.
 export function Logo({ className = '' }: { className?: string }) {
   return (
     <span aria-hidden className={`grid size-8 shrink-0 place-items-center rounded-[10px] bg-brand-600 ${className}`}>
-      <svg viewBox="0 0 24 24" width={20} height={20}>
-        <path fill="#fff" fillRule="evenodd" d="M12 21.31 6.34 15.66A8 8 0 1 1 17.66 15.66ZM15.1 10A3.1 3.1 0 1 0 8.9 10 3.1 3.1 0 1 0 15.1 10Z" />
+      <svg viewBox="0 0 24 24" width={24} height={24}>
+        <path fill="#fff" d="M12 21.31 6.34 15.66A8 8 0 1 1 17.66 15.66Z" />
+        <path d="M8.6 10.1l2.3 2.3 4.6-4.7" fill="none" stroke="var(--color-brand-600)" strokeWidth={2.2} strokeLinecap="round" strokeLinejoin="round" />
       </svg>
+    </span>
+  )
+}
+
+// The site name in two tones, its last word in brand indigo (LocalCompany + Guide), so a long name reads at a glance.
+export function Wordmark() {
+  const [, head, tail] = SITE.name.match(/^(.*?)([A-Z][a-z]*)$/) ?? [null, SITE.name, '']
+  return (
+    <span className="font-display font-extrabold tracking-[-0.03em] text-zinc-900">
+      {head}
+      <span className="text-brand-600">{tail}</span>
     </span>
   )
 }

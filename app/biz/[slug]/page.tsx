@@ -1,3 +1,8 @@
+import {
+  Accessibility, AirVent, Baby, Banknote, Beer, CakeSlice, CalendarCheck, Car, Check, Cigarette, CircleParking, Coffee, CreditCard, Dog,
+  Dumbbell, FileText, Flame, Languages, Laptop, MapPin, Martini, Music, Rainbow, Recycle, Salad, ShoppingBag, ShoppingCart, Smartphone,
+  Sparkles, Store, Sun, Sunrise, Toilet, Truck, Tv, User, Users, UtensilsCrossed, Waves, Wifi, Wine, Wrench, Zap, type LucideIcon,
+} from 'lucide-react'
 import type { Metadata } from 'next'
 import Link from 'next/link'
 import type { ReactNode } from 'react'
@@ -5,7 +10,7 @@ import { notFound } from 'next/navigation'
 import { BizCard, RatingLine, RatingSummary, ReviewCard } from '@/components/biz'
 import { HoursTable, ShareButton } from '@/components/client'
 import { ResultsMap } from '@/components/ResultsMap'
-import { CheckIcon, DirectionsIcon, ExternalIcon, GlobeIcon, PencilIcon, PhoneIcon, PinIcon, ShieldIcon, StarIcon } from '@/components/icons'
+import { DirectionsIcon, ExternalIcon, GlobeIcon, PencilIcon, PhoneIcon, PinIcon, ShieldIcon, StarIcon } from '@/components/icons'
 import { BizImage, Breadcrumbs, JsonLd } from '@/components/ui'
 import { getBusiness, getListing, getListingAreas, getSimilar, getTopRated, ratingBreakdown } from '@/lib/data'
 import { SITE } from '@/lib/site'
@@ -29,38 +34,116 @@ export async function generateMetadata({ params }: PageProps<'/biz/[slug]'>): Pr
   }
 }
 
-function Hero({ b }: { b: Business }) {
+// Full-width photo that runs up behind the floating header (--header-h tall): the breadcrumb trail at the top, the name,
+// rating and categories at the bottom. Without a photo, a brand-colour gradient.
+function Hero({ b, crumbs }: { b: Business; crumbs: { name: string; href?: string }[] }) {
   const photos = (b.images?.map(i => i.thumbnail) ?? [b.thumbnail]).map(src => safeUrl(src)).filter((s): s is string => !!s).slice(0, 4)
   return (
-    <section data-theme="light" className="relative h-72 overflow-hidden bg-zinc-900 sm:h-96">
+    <section className="relative -mt-[var(--header-h)] flex min-h-[calc(var(--header-h)_+_18rem)] flex-col overflow-hidden bg-zinc-900 sm:min-h-[calc(var(--header-h)_+_24rem)]">
       {photos.length ? (
-        <div className="grid h-full" style={{ gridTemplateColumns: `repeat(${photos.length}, minmax(0, 1fr))` }}>
-          {photos.map(src => <BizImage key={src} biz={b} src={src} w={Math.round(1600 / photos.length)} h={700} className="h-full w-full" />)}
+        // grid-rows-1 holds the row to the section's height, so a photo is cropped around its middle instead of cut to its top.
+        <div className="absolute inset-0 grid grid-rows-1" style={{ gridTemplateColumns: `repeat(${photos.length}, minmax(0, 1fr))` }}>
+          {photos.map(src => <BizImage key={src} biz={b} src={src} w={Math.round(2000 / photos.length)} h={1125} eager className="h-full w-full" />)}
         </div>
       ) : (
-        <BizImage biz={b} className="h-full w-full opacity-40" />
+        <div className="absolute inset-0 bg-gradient-to-br from-brand-700 to-brand-950" />
       )}
+      <div className="absolute inset-x-0 top-0 h-48 bg-gradient-to-b from-black/60 to-transparent" />
       <div className="absolute inset-0 bg-gradient-to-t from-black/85 via-black/30 to-transparent" />
-      <div className="absolute inset-x-0 bottom-0">
-        <div className="mx-auto max-w-7xl px-4 pb-8">
-          <h1 className="text-3xl font-bold tracking-tight text-white sm:text-5xl">{b.title}</h1>
-          <div className="mt-3">
-            <RatingLine b={b} size={22} light />
-          </div>
-          <p className="mt-3 flex flex-wrap items-center gap-x-3 gap-y-1 text-sm text-white/90">
-            {b.price && <span>{b.price}</span>}
-            {b.categories.slice(0, 3).map(c => <span key={c} className="rounded-full bg-white/15 px-2.5 py-0.5 ring-1 ring-white/25">{c}</span>)}
-            {b.area && <span className="flex items-center gap-1"><PinIcon width={14} height={14} /> {b.area}, {cityName(b.city)}</span>}
-          </p>
+      <div className="relative mx-auto w-full max-w-7xl px-4 pt-[calc(var(--header-h)_+_1.5rem)]">
+        <Breadcrumbs items={crumbs} light />
+      </div>
+      <div className="relative mx-auto mt-auto w-full max-w-7xl px-4 pt-10 pb-8">
+        <h1 className="text-3xl font-bold tracking-tight text-white sm:text-5xl">{b.title}</h1>
+        <div className="mt-3">
+          <RatingLine b={b} size={22} light />
         </div>
+        <p className="mt-3 flex flex-wrap items-center gap-x-3 gap-y-1 text-sm text-white/90">
+          {b.price && <span>{b.price}</span>}
+          {b.categories.slice(0, 3).map(c => <span key={c} className="rounded-full bg-white/15 px-2.5 py-0.5 ring-1 ring-white/25">{c}</span>)}
+          {b.area && <span className="flex items-center gap-1"><PinIcon width={14} height={14} /> {b.area}, {cityName(b.city)}</span>}
+        </p>
       </div>
     </section>
   )
 }
 
+// Amenity → icon, for Google's usual attributes. First match wins, so specific phrases come before general words
+// ("Outdoor seating" is a sun, not cutlery); anything else gets a tick.
+const AMENITY_ICONS: [RegExp, LucideIcon][] = [
+  [/wheelchair|accessib|hearing loop|assist|braille|listening/i, Accessibility],
+  [/lgbtq|transgender|gender-neutral/i, Rainbow],
+  [/nfc|mobile pay/i, Smartphone],
+  [/card/i, CreditCard],
+  [/cash/i, Banknote],
+  [/wi-?fi/i, Wifi],
+  [/parking|car park|valet/i, CircleParking],
+  [/kid|child|high chair|baby|changing table|family/i, Baby],
+  [/\bdogs?\b|\bpets?\b/i, Dog],
+  [/delivery/i, Truck],
+  [/drive[- ]?through/i, Car],
+  [/takeaway|take-?out|pick-?up|curbside|kerbside/i, ShoppingBag],
+  [/coffee|espresso|\btea\b/i, Coffee],
+  [/dessert|cake|ice cream/i, CakeSlice],
+  [/beer/i, Beer],
+  [/wine/i, Wine],
+  [/cocktail|spirits|alcohol|bar on site|happy[- ]hour/i, Martini],
+  [/vegetarian|vegan|organic|halal|healthy|salad/i, Salad],
+  [/reserv|appointment|booking/i, CalendarCheck],
+  [/breakfast|brunch/i, Sunrise],
+  [/solo/i, User],
+  [/quick/i, Zap],
+  [/outdoor|terrace|rooftop|patio|garden/i, Sun],
+  [/dine|dining|dinner|lunch|table service|counter service|seating|food|plates|catering|menu|all you can eat|buffet/i, UtensilsCrossed],
+  [/group|tourist|student|locals/i, Users],
+  [/laptop|working/i, Laptop],
+  [/toilet|restroom|bathroom/i, Toilet],
+  [/music|karaoke|dancing/i, Music],
+  [/fireplace/i, Flame],
+  [/smok/i, Cigarette],
+  [/\btv\b|sport/i, Tv],
+  [/pool|swim/i, Waves],
+  [/gym|fitness/i, Dumbbell],
+  [/air[- ]condition/i, AirVent],
+  [/language/i, Languages],
+  [/recycl/i, Recycle],
+  [/repair/i, Wrench],
+  [/estimate|quote/i, FileText],
+  [/owned/i, Store],
+  [/shopping|store|shop/i, ShoppingCart],
+  [/on-?site/i, MapPin],
+  [/casual|cosy|cozy|trendy|quiet|romantic|upmarket|historic|lively/i, Sparkles],
+]
+const amenityIcon = (item: string) => AMENITY_ICONS.find(([re]) => re.test(item))?.[1] ?? Check
+
+// Groups flow down the columns, so short and long groups pack together without gaps.
+// (A top margin, not a bottom one: it disappears at the top of each column.)
+function AmenityColumns({ groups }: { groups: [string, string[]][] }) {
+  return (
+    <div className="gap-x-10 sm:columns-2 lg:columns-3">
+      {groups.map(([group, items]) => (
+        <div key={group} className="mt-7 break-inside-avoid first:mt-0">
+          <h3 className="text-xs font-bold tracking-wider text-zinc-900 uppercase">{group}</h3>
+          <ul className="mt-3 space-y-2.5">
+            {items.map(item => {
+              const Icon = amenityIcon(item)
+              return (
+                <li key={item} className="flex items-start gap-2.5 text-sm text-zinc-800">
+                  <Icon aria-hidden size={18} strokeWidth={1.75} className="mt-px shrink-0 text-brand-600" />
+                  {item}
+                </li>
+              )
+            })}
+          </ul>
+        </div>
+      ))}
+    </div>
+  )
+}
+
 function Section({ id, title, children }: { id?: string; title: string; children: ReactNode }) {
   return (
-    <section id={id} className="scroll-mt-32 border-t border-zinc-200 py-8">
+    <section id={id} className="scroll-mt-[calc(var(--header-h)_+_1.25rem)] border-t border-zinc-200 py-8">
       <h2 className="text-xl font-bold tracking-tight">{title}</h2>
       <div className="mt-5">{children}</div>
     </section>
@@ -76,9 +159,14 @@ export default async function BizPage({ params }: PageProps<'/biz/[slug]'>) {
   const nicheSlug = b.nicheSlugs[0] ?? ''
   const website = safeUrl(b.website)
   // Google's service_options plus its grouped "extensions" (accessibility, payments, offerings…), merged by heading.
+  // One list per group; "Dine in" and "Dine-in", or "Wheelchair-accessible" and "Wheelchair accessible", count once.
   const amenities = new Map<string, string[]>()
-  const addAmenities = (group: string, items: string[]) =>
-    amenities.set(featureLabel(group), [...new Set([...(amenities.get(featureLabel(group)) ?? []), ...items])])
+  const same = (s: string) => s.toLowerCase().replace(/[^\p{L}\p{N}]/gu, '')
+  const addAmenities = (group: string, items: string[]) => {
+    const list = amenities.get(featureLabel(group)) ?? []
+    for (const item of items) if (!list.some(x => same(x) === same(item))) list.push(item)
+    amenities.set(featureLabel(group), list)
+  }
   addAmenities('service_options', Object.entries(b.service_options ?? {}).filter(([, v]) => v).map(([k]) => featureLabel(k)))
   for (const ext of b.extensions ?? []) for (const [group, items] of Object.entries(ext)) if (Array.isArray(items)) addAmenities(group, items)
   for (const [group, items] of amenities) if (!items.length) amenities.delete(group)
@@ -92,7 +180,16 @@ export default async function BizPage({ params }: PageProps<'/biz/[slug]'>) {
 
   return (
     <>
-      <Hero b={b} />
+      <Hero
+        b={b}
+        crumbs={[
+          { name: 'Home', href: '/' },
+          { name: town, href: `/${b.citySlug}` },
+          ...(listing ? [{ name: cap(plural(niche)), href: nicheHref }] : []),
+          ...(listing && areaPage ? [{ name: b.area!, href: `${nicheHref}/${b.areaSlug}` }] : []),
+          { name: b.title },
+        ]}
+      />
       <div className="mx-auto max-w-7xl px-4">
         <div className="grid grid-cols-[minmax(0,1fr)] gap-10 lg:grid-cols-[minmax(0,1fr)_360px]">
           <div className="min-w-0">
@@ -106,34 +203,10 @@ export default async function BizPage({ params }: PageProps<'/biz/[slug]'>) {
               </Link>
             </div>
 
-            <Breadcrumbs
-              items={[
-                { name: 'Home', href: '/' },
-                { name: town, href: `/${b.citySlug}` },
-                ...(listing ? [{ name: cap(plural(niche)), href: nicheHref }] : []),
-                ...(listing && areaPage ? [{ name: b.area!, href: `${nicheHref}/${b.areaSlug}` }] : []),
-                { name: b.title },
-              ]}
-            />
-
-            <div className="pt-8">
+            <div className="pt-2">
               {amenities.size > 0 && (
                 <Section title="Amenities and more">
-                  <div className="grid gap-x-8 gap-y-6 sm:grid-cols-2">
-                    {[...amenities].map(([group, items]) => (
-                      <div key={group}>
-                        <h3 className="text-sm font-semibold text-zinc-900">{group}</h3>
-                        <ul className="mt-3 space-y-2.5">
-                          {items.map(item => (
-                            <li key={item} className="flex items-center gap-3 text-sm text-zinc-700">
-                              <span className="grid size-7 shrink-0 place-items-center rounded-full bg-brand-50 text-brand-700"><CheckIcon width={14} height={14} /></span>
-                              {item}
-                            </li>
-                          ))}
-                        </ul>
-                      </div>
-                    ))}
-                  </div>
+                  <AmenityColumns groups={[...amenities]} />
                 </Section>
               )}
 
@@ -186,7 +259,7 @@ export default async function BizPage({ params }: PageProps<'/biz/[slug]'>) {
             </div>
           </div>
 
-          <aside className="min-w-0 space-y-4 pt-6 lg:sticky lg:top-24 lg:self-start">
+          <aside className="min-w-0 space-y-4 pt-6 lg:sticky lg:top-[calc(var(--header-h)_+_1.25rem)] lg:self-start">
             <div className="card divide-y divide-zinc-200">
               {website && (
                 <a href={website} target="_blank" rel="noopener" className="flex items-center justify-between gap-3 p-5 hover:bg-zinc-50">

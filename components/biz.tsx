@@ -66,11 +66,12 @@ export function BizResult({ b, rank }: { b: Business; rank?: number }) {
 // Photo-first card: rating pill on the photo, name and place underneath.
 export function BizCard({ b }: { b: Business }) {
   return (
-    <Link href={`/biz/${b.slug}`} className="group block rounded-2xl focus-visible:outline-2 focus-visible:outline-offset-4 focus-visible:outline-brand-600">
+    // min-w-0: a long one-line (truncated) name must not widen the grid column past the screen on phones.
+    <Link href={`/biz/${b.slug}`} className="group block min-w-0 rounded-2xl focus-visible:outline-2 focus-visible:outline-offset-4 focus-visible:outline-brand-600">
       <div className="relative aspect-[4/3] overflow-hidden rounded-2xl bg-zinc-100 ring-1 ring-zinc-900/5">
         <BizImage biz={b} className="h-full w-full transition duration-500 group-hover:scale-105" />
         {b.rating ? (
-          <span className="absolute top-3 left-3 inline-flex items-center gap-1 rounded-full bg-surface/95 px-2.5 py-1 text-xs font-semibold text-zinc-900 shadow-sm backdrop-blur">
+          <span className="absolute top-3 left-3 inline-flex items-center gap-1 rounded-full bg-white/95 px-2.5 py-1 text-xs font-semibold text-zinc-900 shadow-sm backdrop-blur">
             <StarIcon width={12} height={12} className="text-star" /> {b.rating.toFixed(1)}
           </span>
         ) : null}

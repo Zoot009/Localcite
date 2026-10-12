@@ -64,6 +64,6 @@ export type Business = Place & {
 
 export type Listing = { city: string; citySlug: string; niche: string; nicheSlug: string; items: Business[] }
 export type AreaCount = { name: string; slug: string; count: number }
-export type City = { id: string; name: string; label: string; slug: string; country: string; countryCode: string; count: number; categories: number; photo?: string }
+export type City = { id: string; name: string; label: string; slug: string; country: string; countryCode: string; count: number; categories: number; photo?: string; lat?: number; lng?: number }
 export type CategoryCount = { name: string; slug: string; count: number; group: string; top?: string }
 export type CategoryGroup = { name: string; slug: string; niches: CategoryCount[] }

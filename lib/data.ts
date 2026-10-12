@@ -159,10 +159,11 @@ export function ratingBreakdown(b: Business) {
 export async function getCities(): Promise<City[]> {
   'use cache'
   cacheLife('days')
-  const rows = await sql<{ id: string; name: string; state: string | null; country_code: string; slug: string; count: number; categories: number; photo: string | null }>(
-    `select ci.id, ci.name, ci.state, ci.country_code, ci.slug, coalesce(b.n, 0)::int count, coalesce(l.n, 0)::int categories, p.thumbnail photo
+  const rows = await sql<{ id: string; name: string; state: string | null; country_code: string; slug: string; count: number; categories: number; photo: string | null; lat: number | null; lng: number | null }>(
+    `select ci.id, ci.name, ci.state, ci.country_code, ci.slug, b.lat, b.lng, coalesce(b.n, 0)::int count, coalesce(l.n, 0)::int categories, p.thumbnail photo
      from cities ci
-     left join (select city_id, count(*) n, sum(review_count) reviews from businesses group by 1) b on b.city_id = ci.id
+     left join (select city_id, count(*) n, sum(review_count) reviews, avg(latitude)::float8 lat, avg(longitude)::float8 lng
+                from businesses group by 1) b on b.city_id = ci.id
      left join (select city_id, count(*) n from city_category_counts where businesses >= $1 group by 1) l on l.city_id = ci.id
      left join lateral (select x.thumbnail from businesses x join business_categories bc on bc.business_id = x.id
        join categories c on c.id = bc.category_id
@@ -172,7 +173,7 @@ export async function getCities(): Promise<City[]> {
     `,
     [MIN_CATEGORY_LISTINGS],
   )
-  return rows.map(r => ({ id: r.id, name: r.name, label: cityLabel(r.name, r.state), slug: r.slug, country: countryName(r.country_code), countryCode: r.country_code, count: r.count, categories: r.categories, photo: u(r.photo) }))
+  return rows.map(r => ({ id: r.id, name: r.name, label: cityLabel(r.name, r.state), slug: r.slug, country: countryName(r.country_code), countryCode: r.country_code, count: r.count, categories: r.categories, photo: u(r.photo), lat: u(r.lat), lng: u(r.lng) }))
 }
 
 export async function getCity(slug: string) {
@@ -287,6 +288,24 @@ export async function getCategoryGroups(): Promise<CategoryGroup[]> {
 
 export async function getPopularNiches(n: number) {
   return (await getCategoryGroups()).flatMap(g => g.niches).sort((a, b) => b.count - a.count).slice(0, n)
+}
+
+// Home page photo tiles, in the order given: each category's place count and a photo of its most-reviewed place whose
+// own main type matches the category (so a hotel that is also listed as a bar doesn't stand in for bars).
+export async function getCategoryTiles(slugs: string[]) {
+  'use cache'
+  cacheLife('days')
+  const rows = await sql<{ slug: string; name: string; count: number; photo: string | null }>(
+    `select c.slug, c.name, p.thumbnail photo,
+       (select coalesce(sum(cc.businesses), 0)::int from city_category_counts cc where cc.category_id = c.id) count
+     from categories c
+     left join lateral (select b.thumbnail from business_categories bc join businesses b on b.id = bc.business_id
+       where bc.category_id = c.id and b.thumbnail is not null
+       order by coalesce(b.primary_type ilike '%' || left(c.name, 4) || '%', false) desc, b.review_count desc limit 1) p on true
+     where c.slug = any($1)`,
+    [slugs],
+  )
+  return slugs.flatMap(s => rows.filter(r => r.slug === s)).map(r => ({ ...r, photo: u(r.photo) }))
 }
 
 // ---------- search ----------

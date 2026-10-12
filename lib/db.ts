@@ -5,7 +5,7 @@ const url = process.env.WEB_DATABASE_URL
 if (!url) throw new Error('Set WEB_DATABASE_URL in .env.local (read-only Supabase login)')
 
 // One pool per server process; dev hot-reload would otherwise open a new pool on every edit.
-const g = globalThis as unknown as { __pool?: Pool }
+const g = globalThis as unknown as { __pool?: Pool; __formsPool?: Pool }
 const pool = (g.__pool ??= createPool(url))
 
 function createPool(connectionString: string) {
@@ -29,4 +29,12 @@ export async function sql<T>(text: string, params: unknown[] = []): Promise<T[]>
       await new Promise(r => setTimeout(r, 1000 * 2 ** attempt))
     }
   }
+}
+
+// Form submissions (new listings, claims, reviews) use a second, insert-only login made by scripts/setup-forms-db.mjs:
+// it can add rows but not read them back. No retries: an insert that timed out may still have been saved.
+export async function insert(text: string, params: unknown[] = []) {
+  const formsUrl = process.env.WEB_FORMS_DATABASE_URL
+  if (!formsUrl) throw new Error('Set WEB_FORMS_DATABASE_URL in .env.local (run: node scripts/setup-forms-db.mjs)')
+  await (g.__formsPool ??= createPool(formsUrl)).query(text, params)
 }

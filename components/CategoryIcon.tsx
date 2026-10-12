@@ -18,7 +18,7 @@ const GROUPS: [RegExp, LucideIcon, string][] = [
   [/beauty|spa/i, Sparkles, 'bg-pink-50 text-pink-600 ring-pink-100'],
   [/home/i, House, 'bg-amber-50 text-amber-600 ring-amber-100'],
   [/shopping|retail/i, ShoppingBag, 'bg-violet-50 text-violet-600 ring-violet-100'],
-  [/auto/i, CarFront, 'bg-slate-100 text-slate-700 ring-slate-200 dark:text-slate-300'],
+  [/auto/i, CarFront, 'bg-slate-100 text-slate-700 ring-slate-200'],
   [/professional|legal/i, Briefcase, 'bg-indigo-50 text-indigo-600 ring-indigo-100'],
   [/financ/i, Banknote, 'bg-green-50 text-green-700 ring-green-100'],
   [/real estate/i, Building2, 'bg-cyan-50 text-cyan-700 ring-cyan-100'],
@@ -29,8 +29,6 @@ const GROUPS: [RegExp, LucideIcon, string][] = [
   [/event|wedding/i, PartyPopper, 'bg-fuchsia-50 text-fuchsia-600 ring-fuchsia-100'],
 ]
 const DEFAULT: [LucideIcon, string] = [Store, 'bg-brand-50 text-brand-700 ring-brand-100']
-// In dark mode the pale tints would glare, so tiles turn into a faint glass square and the icon gets brighter.
-const DARK_TILE = 'dark:bg-white/[0.06] dark:ring-white/10 dark:brightness-150'
 
 // Category name → icon. First match wins, so specific names come before general ones.
 const ICONS: [RegExp, LucideIcon][] = [
@@ -69,7 +67,7 @@ export function CategoryIcon({ name, group, size = 44, plain = false, mono = fal
   const { Icon, tint } = categoryStyle(name, group)
   if (plain || mono) return <Icon aria-hidden size={size} strokeWidth={2} className={`shrink-0 ${mono ? '' : tint.split(' ')[1]} ${className}`} />
   return (
-    <span aria-hidden className={`grid shrink-0 place-items-center rounded-xl ring-1 ring-inset ${tint} ${DARK_TILE} ${className}`} style={{ width: size, height: size }}>
+    <span aria-hidden className={`grid shrink-0 place-items-center rounded-xl ring-1 ring-inset ${tint} ${className}`} style={{ width: size, height: size }}>
       <Icon size={Math.round(size * 0.5)} strokeWidth={1.9} />
     </span>
   )
@@ -80,7 +78,7 @@ export function GroupIcon({ group, size = 44, brand = false, className = '' }: {
   const [, Icon, groupTint] = GROUPS.find(([re]) => re.test(group)) ?? [null, ...DEFAULT]
   const tint = brand ? DEFAULT[1] : groupTint
   return (
-    <span aria-hidden className={`grid shrink-0 place-items-center rounded-xl ring-1 ring-inset ${tint} ${DARK_TILE} ${className}`} style={{ width: size, height: size }}>
+    <span aria-hidden className={`grid shrink-0 place-items-center rounded-xl ring-1 ring-inset ${tint} ${className}`} style={{ width: size, height: size }}>
       <Icon size={Math.round(size * 0.5)} strokeWidth={1.9} />
     </span>
   )

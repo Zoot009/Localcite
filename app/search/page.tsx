@@ -125,7 +125,7 @@ async function Results({ searchParams }: Pick<PageProps<'/search'>, 'searchParam
           )}
         </div>
         <aside className="hidden xl:block">
-          <ResultsMap points={mapPoints(shown, (page - 1) * PAGE_SIZE + 1)} className="sticky top-20 h-[calc(100vh-6rem)]" />
+          <ResultsMap points={mapPoints(shown, (page - 1) * PAGE_SIZE + 1)} className="sticky top-[calc(var(--header-h)_+_1.25rem)] h-[calc(100vh_-_var(--header-h)_-_2.25rem)]" />
         </aside>
       </div>
     </div>
