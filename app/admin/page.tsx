@@ -4,11 +4,12 @@ import { Suspense, type ReactNode } from 'react'
 import { Logo, Wordmark } from '@/components/icons'
 import { Stars } from '@/components/ui'
 import { adminSql } from '@/lib/db'
-import { SITE } from '@/lib/site'
 import { cap, formatDate, one, safeUrl, telHref } from '@/lib/utils'
 import { claimAction, listingAction, logout, reviewAction } from './actions'
 import { requireAdmin } from './auth'
+import { Badge, Empty, pageHref, type Tone } from './parts'
 import { Act } from './ui'
+import { Websites } from './websites'
 
 export const metadata: Metadata = { title: 'Admin' }
 
@@ -16,16 +17,16 @@ const TABS = [
   { key: 'listings', label: 'Listings' },
   { key: 'claims', label: 'Claims' },
   { key: 'reviews', label: 'Reviews' },
+  { key: 'websites', label: 'Websites' },
 ] as const
 type Tab = (typeof TABS)[number]['key']
 
 // ponytail: newest 200 per tab, add paging when a tab outgrows that.
 const LIMIT = 200
 
-// Each business lives on one of the websites sharing this database (scripts/setup-sites-db.mjs), so link to it there.
-const HERE = new URL(SITE.url).hostname
+// The website each business lives on, so its links open there (see pageHref).
 const SITE_OF = `left join business_sites bs on bs.business_id = b.id left join sites st on st.id = bs.site_id`
-const bizHref = (slug: string, domain: string | null) => (!domain || domain === HERE ? `/biz/${slug}` : `https://${domain}/biz/${slug}`)
+const bizHref = (slug: string, domain: string | null) => pageHref(domain, `/biz/${slug}`)
 
 export default function AdminPage({ searchParams }: PageProps<'/admin'>) {
   return (
@@ -37,13 +38,14 @@ export default function AdminPage({ searchParams }: PageProps<'/admin'>) {
 
 async function Panel({ searchParams }: Pick<PageProps<'/admin'>, 'searchParams'>) {
   await requireAdmin()
-  const asked = one((await searchParams).tab)
+  const sp = await searchParams
+  const asked = one(sp.tab)
   const tab: Tab = TABS.find(t => t.key === asked)?.key ?? 'listings'
   let counts: Record<Tab, string>
   try {
     ;[counts] = await adminSql<Record<Tab, string>>(
       `select (select count(*) from listing_requests) listings, (select count(*) from claim_requests) claims,
-         (select count(*) from user_reviews) reviews`,
+         (select count(*) from user_reviews) reviews, (select count(*) from sites) websites`,
     )
   } catch (err) {
     // On a new server this is nearly always the admin database login, missing or mistyped: say so instead of failing.
@@ -67,13 +69,14 @@ async function Panel({ searchParams }: Pick<PageProps<'/admin'>, 'searchParams'>
               key={t.key} href={`/admin?tab=${t.key}`} aria-current={t.key === tab ? 'page' : undefined}
               className="-mb-px flex items-center gap-2 border-b-2 border-transparent py-3 text-sm font-semibold text-zinc-500 hover:text-zinc-900 aria-[current=page]:border-brand-600 aria-[current=page]:text-zinc-900"
             >
-              {t.label}<span className="rounded-full bg-zinc-100 px-2 py-0.5 text-xs font-medium text-zinc-600">{counts[t.key]}</span>
+              {t.label}<span className="rounded-full bg-zinc-100 px-2 py-0.5 text-xs font-medium text-zinc-600 max-sm:hidden">{counts[t.key]}</span>
             </Link>
           ))}
         </nav>
       </header>
       <main className="mx-auto w-full max-w-5xl flex-1 px-4 py-8">
-        {tab === 'listings' ? <Listings /> : tab === 'claims' ? <Claims /> : <Reviews />}
+        {tab === 'websites' ? <Websites site={one(sp.site)} type={one(sp.type)} q={one(sp.q)} page={one(sp.page)} />
+          : tab === 'listings' ? <Listings /> : tab === 'claims' ? <Claims /> : <Reviews />}
       </main>
     </>
   )
@@ -224,18 +227,6 @@ async function Reviews() {
 
 // ---------- pieces ----------
 
-type Tone = 'new' | 'good' | 'bad' | 'info'
-const BADGE: Record<Tone, string> = {
-  new: 'bg-amber-50 text-amber-800 ring-amber-200',
-  good: 'bg-emerald-50 text-emerald-800 ring-emerald-200',
-  bad: 'bg-red-50 text-red-700 ring-red-200',
-  info: 'bg-zinc-100 text-zinc-700 ring-zinc-200',
-}
-
-function Badge({ tone, children }: { tone: Tone; children: ReactNode }) {
-  return <span className={`shrink-0 rounded-full px-2.5 py-0.5 text-xs font-semibold ring-1 ring-inset ${BADGE[tone]}`}>{children}</span>
-}
-
 function Card({ title, href, badge, children }: { title: string; href?: string; badge: ReactNode; children: ReactNode }) {
   return (
     <li className="card p-5">
@@ -258,8 +249,6 @@ function Info({ label, children }: { label: string; children: ReactNode }) {
 }
 
 const Mail = ({ to }: { to: string }) => <a href={`mailto:${to}`} className="text-brand-700 hover:underline">{to}</a>
-
-const Empty = ({ children }: { children: ReactNode }) => <p className="card p-10 text-center text-zinc-600">{children}</p>
 
 function NoDatabase({ error }: { error: string }) {
   return (

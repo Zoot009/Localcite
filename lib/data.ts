@@ -266,8 +266,9 @@ export async function getTopAreaListings(n: number) {
 
 // ---------- categories ----------
 
-
-export async function getCategoryGroups(): Promise<CategoryGroup[]> {
+// Categories by group, with how many places each has. Categories with no places yet (never scraped) are left out of
+// menus, the categories page and search suggestions; the add-a-business form asks for them all.
+export async function getCategoryGroups({ includeEmpty = false } = {}): Promise<CategoryGroup[]> {
   'use cache'
   cacheLife('days')
   const rows = await sql<{ name: string; slug: string; group_name: string; count: number }>(
@@ -277,6 +278,7 @@ export async function getCategoryGroups(): Promise<CategoryGroup[]> {
   )
   const groups = new Map<string, CategoryGroup>()
   for (const r of rows) {
+    if (!r.count && !includeEmpty) continue
     const g = groups.get(r.group_name) ?? { name: r.group_name, slug: slugify(r.group_name), niches: [] }
     g.niches.push({ name: r.name, slug: r.slug, count: r.count, group: r.group_name })
     groups.set(r.group_name, g)

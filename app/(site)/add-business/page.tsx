@@ -36,7 +36,7 @@ export default function AddBusinessPage({ searchParams }: PageProps<'/add-busine
 async function Content({ searchParams }: Pick<PageProps<'/add-business'>, 'searchParams'>) {
   const sp = await searchParams
   const b = await getBusiness(one(sp.claim) ?? '')
-  const [groups, allCities] = await Promise.all([getCategoryGroups(), getCities()])
+  const [groups, allCities] = await Promise.all([getCategoryGroups({ includeEmpty: true }), getCities()])
   // Suggestions for the add form: the commonest categories first; cities busiest first, as name + country
   // (a name alone can be ambiguous: Spain and Venezuela both have a Valencia).
   const categories = groups.flatMap(g => g.niches.map(n => ({ label: cap(n.name), hint: g.name, count: n.count })))

@@ -74,7 +74,7 @@ create policy "web_reader reads published reviews" on public.user_reviews for se
 -- Admin panel: sees every submission, changes its status, deletes it, and publishes listings with the function
 -- publish_listing_request (it adds the business; web_admin can't write to businesses itself).
 grant usage on schema public to web_admin;
-grant select on public.businesses, public.cities, public.categories to web_admin;
+grant select on public.businesses, public.business_categories, public.cities, public.categories to web_admin;
 grant select, delete on public.listing_requests, public.claim_requests, public.user_reviews to web_admin;
 grant update (status, category_id) on public.listing_requests to web_admin;
 grant update (status) on public.claim_requests, public.user_reviews to web_admin;
