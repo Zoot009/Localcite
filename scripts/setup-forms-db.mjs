@@ -85,6 +85,35 @@ drop policy if exists "web_admin manages claims" on public.claim_requests;
 create policy "web_admin manages claims" on public.claim_requests for all to web_admin using (true) with check (true);
 drop policy if exists "web_admin manages reviews" on public.user_reviews;
 create policy "web_admin manages reviews" on public.user_reviews for all to web_admin using (true) with check (true);
+
+-- Admin panel: edit or remove a business sent in through the add-a-business form, published or not. Both go through its
+-- listing request, so the scraped businesses can't be changed this way. Each returns the business's slug (or null).
+create or replace function public.admin_edit_listing(req_id bigint, new_name text, new_address text, new_phone text,
+  new_website text, new_description text) returns text
+language plpgsql security definer set search_path = public as $$
+declare b_id bigint; b_slug text;
+begin
+  update listing_requests set name = new_name, address = new_address, phone = new_phone, website = new_website,
+    description = new_description where id = req_id returning business_id into b_id;
+  if not found then raise exception 'listing request % not found', req_id; end if;
+  update businesses set title = new_name, address = new_address, phone = new_phone, website = new_website,
+    description = new_description where id = b_id returning slug into b_slug;
+  return b_slug;
+end $$;
+create or replace function public.admin_remove_listing(req_id bigint) returns text
+language plpgsql security definer set search_path = public as $$
+declare b_id bigint; b_slug text;
+begin
+  delete from listing_requests where id = req_id returning business_id into b_id;
+  -- Its categories, website, claims and reviews go with it (on delete cascade).
+  delete from businesses where id = b_id returning slug into b_slug;
+  return b_slug;
+end $$;
+-- Supabase lets its public API keys run new functions by default: only the admin login may run these.
+revoke all on function public.admin_edit_listing(bigint, text, text, text, text, text), public.admin_remove_listing(bigint)
+  from public, anon, authenticated;
+grant execute on function public.admin_edit_listing(bigint, text, text, text, text, text), public.admin_remove_listing(bigint)
+  to web_admin;
 `;
 
 const LOGINS = [
@@ -105,6 +134,9 @@ function setEnv(key, value, comment) {
 
 const db = new pg.Client({ connectionString: DATABASE_URL, ssl: { rejectUnauthorized: false } });
 await db.connect();
+// Short lock waits, and if this script's connection drops mid-way the server ends the session within 15s instead of
+// holding its locks (the live sites read some of these tables).
+await db.query(`set lock_timeout = '5s'; set idle_in_transaction_session_timeout = '15s'`);
 try {
   await db.query('begin');
   const urls = [];

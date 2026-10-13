@@ -8,7 +8,7 @@ import { cap, formatDate, one, safeUrl, telHref } from '@/lib/utils'
 import { claimAction, listingAction, logout, reviewAction } from './actions'
 import { requireAdmin } from './auth'
 import { Badge, Empty, pageHref, type Tone } from './parts'
-import { Act } from './ui'
+import { Act, EditListing } from './ui'
 import { Websites } from './websites'
 
 export const metadata: Metadata = { title: 'Admin' }
@@ -130,22 +130,27 @@ async function Listings() {
               <Info label="Sent by">{r.submitter_name} ({cap(r.relation)}), <Mail to={r.submitter_email} /></Info>
             </dl>
             {r.description && <p className="mt-3 text-sm whitespace-pre-line text-zinc-700">{r.description}</p>}
-            {r.slug ? (
-              <Link href={bizHref(r.slug, r.domain)} className="btn btn-outline mt-4 px-3 py-1.5">View on {r.domain ?? 'site'}</Link>
-            ) : (
-              <form action={listingAction} className="mt-4 flex flex-wrap items-center gap-2">
-                <input type="hidden" name="id" value={r.id} />
-                {!r.category_id && (
-                  <select name="category" required aria-label="Category to list it under" defaultValue="" className="input w-auto py-1.5">
-                    <option value="" disabled>List it under…</option>
-                    {categories.map(c => <option key={c.id} value={c.id}>{c.name}</option>)}
-                  </select>
-                )}
-                <Act intent="publish" tone="primary" check>Approve & publish</Act>
-                {r.status !== 'rejected' && <Act intent="rejected">Reject</Act>}
-                <Act intent="delete" tone="danger" ask={`Delete the request for ${r.name}? This can’t be undone.`}>Delete</Act>
-              </form>
-            )}
+            <form action={listingAction} className="mt-4 flex flex-wrap items-center gap-2">
+              <input type="hidden" name="id" value={r.id} />
+              {r.slug ? (
+                <Link href={bizHref(r.slug, r.domain)} className="btn btn-outline px-3 py-1.5">View on {r.domain ?? 'site'}</Link>
+              ) : (
+                <>
+                  {!r.category_id && (
+                    <select name="category" required aria-label="Category to list it under" defaultValue="" className="input w-auto py-1.5">
+                      <option value="" disabled>List it under…</option>
+                      {categories.map(c => <option key={c.id} value={c.id}>{c.name}</option>)}
+                    </select>
+                  )}
+                  <Act intent="publish" tone="primary" check>Approve & publish</Act>
+                  {r.status !== 'rejected' && <Act intent="rejected">Reject</Act>}
+                </>
+              )}
+              <Act intent="delete" tone="danger" ask={r.slug
+                ? `Delete ${r.name}? Its page comes off ${r.domain ?? 'the site'} too. This can’t be undone.`
+                : `Delete the request for ${r.name}? This can’t be undone.`}>Delete</Act>
+            </form>
+            <EditListing id={r.id} values={{ name: r.name, address: r.address, phone: r.phone ?? '', website: r.website ?? '', description: r.description ?? '' }} />
           </Card>
         )
       })}

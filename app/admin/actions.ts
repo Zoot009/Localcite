@@ -4,6 +4,7 @@ import { refresh, revalidatePath, updateTag } from 'next/cache'
 import { redirect } from 'next/navigation'
 import { adminSql } from '@/lib/db'
 import { slugify } from '@/lib/utils'
+import { LISTING_RULES, check, websiteUrl } from '@/lib/validate'
 import { requireAdmin, rightLogin, signIn, signOut } from './auth'
 
 export type LoginState = { error: string; email: string } | null
@@ -49,13 +50,50 @@ export async function claimAction(fd: FormData) {
   refresh()
 }
 
-// A published request is a live business now, so these only touch requests that aren't.
+// Reject and publish only touch requests that aren't live yet; delete also takes a live one's business off the site.
 export async function listingAction(fd: FormData) {
   const { id, intent } = await read(fd, ['publish', 'rejected', 'delete'])
-  if (intent === 'delete') await adminSql('delete from listing_requests where id = $1 and business_id is null', [id])
+  if (intent === 'delete') await remove(id)
   if (intent === 'rejected') await adminSql(`update listing_requests set status = 'rejected' where id = $1 and business_id is null`, [id])
   if (intent === 'publish') await publish(id, String(fd.get('category') ?? ''))
   refresh()
+}
+
+// Deletes a request, and its business with it if it was published (admin_remove_listing, a database function).
+async function remove(id: string) {
+  const [page] = await adminSql<{ path: string }>(
+    `select '/' || ci.slug || '/' || c.slug path from listing_requests r
+     join cities ci on ci.id = r.city_id join categories c on c.id = r.category_id where r.id = $1`,
+    [id],
+  )
+  const [{ slug }] = await adminSql<{ slug: string | null }>('select admin_remove_listing($1) slug', [id])
+  if (slug) {
+    revalidatePath(`/biz/${slug}`) // gone from this website now; the others drop it when their pages refresh
+    if (page) revalidatePath(page.path)
+  }
+}
+
+// The details an admin can change on a business sent in through the form, published or not, checked like the form.
+const EDIT_RULES = {
+  name: LISTING_RULES.name, address: LISTING_RULES.address, phone: LISTING_RULES.phone,
+  website: LISTING_RULES.website, description: LISTING_RULES.description,
+}
+export type EditState = { ok: boolean; message: string; values?: Record<string, string>; errors?: Record<string, string> } | null
+
+export async function editListing(_: EditState, fd: FormData): Promise<EditState> {
+  await requireAdmin()
+  const id = String(fd.get('id'))
+  if (!/^\d+$/.test(id)) throw new Error('Unknown listing')
+  const values = Object.fromEntries(Object.keys(EDIT_RULES).map(k => [k, String(fd.get(k) ?? '').trim()]))
+  const errors = check(EDIT_RULES, values)
+  if (Object.keys(errors).length) return { ok: false, message: 'Please fix the highlighted fields.', values, errors }
+  const [{ slug }] = await adminSql<{ slug: string | null }>(
+    'select admin_edit_listing($1, $2, $3, $4, $5, $6) slug',
+    [id, values.name, values.address, values.phone || null, websiteUrl(values.website), values.description || null],
+  )
+  if (slug) revalidatePath(`/biz/${slug}`) // shows on this website now; the others pick it up when their pages refresh
+  refresh()
+  return { ok: true, message: 'Saved.' }
 }
 
 // publish_listing_request (a database function) adds an approved or paid request to the site as a business.

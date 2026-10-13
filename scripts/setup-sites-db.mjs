@@ -81,7 +81,7 @@ begin
   end if;
   return null;
 end $$;
-revoke all on function public.assign_business_site() from public;
+revoke all on function public.assign_business_site() from public, anon, authenticated; -- Supabase grants these by default
 drop trigger if exists assign_business_site on public.business_categories;
 create trigger assign_business_site after insert on public.business_categories
   for each row execute function public.assign_business_site();
