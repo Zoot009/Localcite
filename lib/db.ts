@@ -9,7 +9,9 @@ const g = globalThis as unknown as { __pool?: Pool; __formsPool?: Pool; __adminP
 const pool = (g.__pool ??= createPool(url))
 
 function createPool(connectionString: string) {
-  const p = new Pool({ connectionString, ssl: { rejectUnauthorized: false }, max: 4, connectionTimeoutMillis: 10_000 })
+  // `next build` prerenders with one worker per CPU, each with its own pool; the pooler caps total connections at 15.
+  const max = process.env.NEXT_PHASE === 'phase-production-build' ? 1 : 4
+  const p = new Pool({ connectionString, ssl: { rejectUnauthorized: false }, max, connectionTimeoutMillis: 10_000 })
   // The pooler sometimes drops idle connections. Without this listener that error would crash the whole server.
   p.on('error', err => console.warn('[db] idle connection dropped:', err.message))
   return p
