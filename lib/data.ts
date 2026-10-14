@@ -165,10 +165,11 @@ export async function getCities(): Promise<City[]> {
      left join (select city_id, count(*) n, sum(review_count) reviews, avg(latitude)::float8 lat, avg(longitude)::float8 lng
                 from businesses group by 1) b on b.city_id = ci.id
      left join (select city_id, count(*) n from city_category_counts where businesses >= $1 group by 1) l on l.city_id = ci.id
-     left join lateral (select x.thumbnail from businesses x join business_categories bc on bc.business_id = x.id
-       join categories c on c.id = bc.category_id
-       where x.city_id = ci.id and c.slug in ('hotel', 'restaurant', 'cafe') and x.thumbnail is not null and x.review_count >= 50
-       order by (c.slug = 'hotel') desc, x.score desc limit 1) p on true -- cover photo: a top hotel or restaurant, they photograph well
+     -- cover photo: a top hotel or restaurant, they photograph well. One pass for all cities: a per-city lateral took 25-45s.
+     left join (select distinct on (x.city_id) x.city_id, x.thumbnail from businesses x
+       join business_categories bc on bc.business_id = x.id join categories c on c.id = bc.category_id
+       where c.slug in ('hotel', 'restaurant', 'cafe') and x.thumbnail is not null and x.review_count >= 50
+       order by x.city_id, (c.slug = 'hotel') desc, x.score desc) p on p.city_id = ci.id
      order by coalesce(b.reviews, 0) desc, ci.name -- busiest first: every city has ~450 places, but review totals tell Paris from Toulouse
     `,
     [MIN_CATEGORY_LISTINGS],
