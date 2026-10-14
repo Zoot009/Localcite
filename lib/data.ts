@@ -1,10 +1,13 @@
 // All directory data comes from Supabase (tables filled by the scrape.do pipeline).
-// Every read is cached for a day with 'use cache': the data only changes when the scraper runs.
+// Every read is cached for a day with 'use cache': the data only changes when the scraper runs, or when the admin
+// panel adds, edits or deletes a business, which clears every read tagged DIRECTORY so no page keeps the old version.
 import { cacheLife, cacheTag } from 'next/cache'
 import { sql } from './db'
 import { MIN_AREA_LISTINGS, MIN_CATEGORY_LISTINGS, PAGE_SIZE } from './site'
 import type { AreaCount, Business, CategoryCount, CategoryGroup, City, Listing, Review } from './types'
 import { cap, slugify } from './utils'
+
+export const DIRECTORY = 'directory'
 
 // ---------- businesses ----------
 
@@ -69,6 +72,7 @@ function toBusiness(r: Row): Business {
 export async function getBusiness(slug: string) {
   'use cache'
   cacheLife('days')
+  cacheTag(DIRECTORY)
   const [r] = await sql<Row>(
     `select ${BIZ}, coalesce(n.names, '{}') niches, coalesce(n.slugs, '{}') niche_slugs
      from businesses b join cities ci on ci.id = b.city_id
@@ -83,6 +87,7 @@ export async function getBusiness(slug: string) {
 export async function getTopRated(n: number, citySlug?: string, categorySlugs?: string[]) {
   'use cache'
   cacheLife('days')
+  cacheTag(DIRECTORY)
   const rows = await sql<Row>(
     `select ${BIZ} from businesses b join cities ci on ci.id = b.city_id
      where ($1::text is null or ci.slug = $1) and b.review_count >= 20 and b.thumbnail is not null
@@ -100,6 +105,7 @@ export const getSimilar = (b: Business, n = 4) => similar(b.cityId, b.niches[0] 
 async function similar(cityId: string, niche: string, id: string, areaSlug: string | null, n: number) {
   'use cache'
   cacheLife('days')
+  cacheTag(DIRECTORY)
   const rows = await sql<Row>(
     `select ${BIZ} from business_categories bc join businesses b on b.id = bc.business_id
      join cities ci on ci.id = b.city_id join categories c on c.id = bc.category_id
@@ -114,6 +120,7 @@ async function similar(cityId: string, niche: string, id: string, areaSlug: stri
 export async function getHighlights(n: number, citySlug?: string, categorySlugs?: string[]) {
   'use cache'
   cacheLife('days')
+  cacheTag(DIRECTORY)
   const rows = await sql<Row>(
     `select ${BIZ} from businesses b join cities ci on ci.id = b.city_id
      where ($1::text is null or ci.slug = $1) and b.user_review is not null and b.thumbnail is not null and b.review_count >= 20
@@ -134,6 +141,7 @@ const HERO_CATEGORIES = ['restaurant', 'cafe', 'coffee-shop', 'bakery', 'hotel',
 export async function getHeroPicks(country?: string, city?: string): Promise<{ picks: Business[]; place?: string }> {
   'use cache'
   cacheLife('days')
+  cacheTag(DIRECTORY)
   if (country) {
     const rows = await sql<Row & { city_match: boolean }>(
       `select ${BIZ}, (lower(ci.name) = lower($2) or lower($2) = any(select lower(a) from unnest(coalesce(ci.aliases, '{}')) a)) city_match
@@ -159,6 +167,7 @@ export function ratingBreakdown(b: Business) {
 export async function getCities(): Promise<City[]> {
   'use cache'
   cacheLife('days')
+  cacheTag(DIRECTORY)
   const rows = await sql<{ id: string; name: string; state: string | null; country_code: string; slug: string; count: number; categories: number; photo: string | null; lat: number | null; lng: number | null }>(
     `select ci.id, ci.name, ci.state, ci.country_code, ci.slug, b.lat, b.lng, coalesce(b.n, 0)::int count, coalesce(l.n, 0)::int categories, p.thumbnail photo
      from cities ci
@@ -185,6 +194,7 @@ export async function getCity(slug: string) {
 export async function getCityCategories(citySlug: string): Promise<CategoryCount[]> {
   'use cache'
   cacheLife('days')
+  cacheTag(DIRECTORY)
   const rows = await sql<{ name: string; slug: string; group_name: string; count: number; top: string | null }>(
     `select c.name, c.slug, c.group_name, cc.businesses::int count,
        (select b.title from business_categories bc join businesses b on b.id = bc.business_id
@@ -200,6 +210,7 @@ export async function getCityCategories(citySlug: string): Promise<CategoryCount
 export async function getCityAreas(citySlug: string): Promise<AreaCount[]> {
   'use cache'
   cacheLife('days')
+  cacheTag(DIRECTORY)
   return sql<AreaCount>(
     `select min(b.area) name, b.area_slug slug, count(*)::int count
      from businesses b join cities ci on ci.id = b.city_id
@@ -214,6 +225,7 @@ export async function getCityAreas(citySlug: string): Promise<AreaCount[]> {
 export async function getListing(citySlug: string, nicheSlug: string): Promise<Listing | undefined> {
   'use cache'
   cacheLife('days')
+  cacheTag(DIRECTORY)
   const rows = await sql<Row & { niche: string }>(
     `select ${BIZ}, c.name niche from business_categories bc join businesses b on b.id = bc.business_id
      join cities ci on ci.id = bc.city_id join categories c on c.id = bc.category_id
@@ -228,6 +240,7 @@ export async function getListing(citySlug: string, nicheSlug: string): Promise<L
 export async function getListingAreas(citySlug: string, nicheSlug: string): Promise<AreaCount[]> {
   'use cache'
   cacheLife('days')
+  cacheTag(DIRECTORY)
   return sql<AreaCount>(
     `select la.area name, la.area_slug slug, la.businesses::int count
      from listing_areas la join cities ci on ci.id = la.city_id join categories c on c.id = la.category_id
@@ -246,6 +259,7 @@ export async function getAreaListing(citySlug: string, nicheSlug: string, areaSl
 export async function getTopListings(n: number) {
   'use cache'
   cacheLife('days')
+  cacheTag(DIRECTORY)
   return sql<{ city: string; category: string }>(
     `select ci.slug city, c.slug category from city_category_counts cc
      join cities ci on ci.id = cc.city_id join categories c on c.id = cc.category_id
@@ -257,6 +271,7 @@ export async function getTopListings(n: number) {
 export async function getTopAreaListings(n: number) {
   'use cache'
   cacheLife('days')
+  cacheTag(DIRECTORY)
   return sql<{ city: string; category: string; area: string }>(
     `select ci.slug city, c.slug category, la.area_slug area from listing_areas la
      join cities ci on ci.id = la.city_id join categories c on c.id = la.category_id
@@ -272,6 +287,7 @@ export async function getTopAreaListings(n: number) {
 export async function getCategoryGroups({ includeEmpty = false } = {}): Promise<CategoryGroup[]> {
   'use cache'
   cacheLife('days')
+  cacheTag(DIRECTORY)
   const rows = await sql<{ name: string; slug: string; group_name: string; count: number }>(
     `select c.name, c.slug, c.group_name, coalesce(sum(cc.businesses), 0)::int count
      from categories c left join city_category_counts cc on cc.category_id = c.id
@@ -300,6 +316,7 @@ export async function getPopularNiches(n: number) {
 export async function getReviewStats() {
   'use cache'
   cacheLife('days')
+  cacheTag(DIRECTORY)
   const [r] = await sql<{ total: string; avg: number }>(
     `select sum(review_count)::bigint total, (sum(rating * review_count) / nullif(sum(review_count), 0))::float8 avg
      from businesses where rating is not null and review_count > 0`,
@@ -313,6 +330,7 @@ export async function getReviewStats() {
 export async function getSiteReviews(businessId: string): Promise<Review[]> {
   'use cache'
   cacheLife('minutes')
+  cacheTag(DIRECTORY)
   cacheTag(`reviews-${businessId}`)
   const rows = await sql<{ id: string; rating: number; body: string; author_name: string; created_at: Date }>(
     `select id, rating, body, author_name, created_at from user_reviews where business_id = $1 order by created_at desc limit 50`,
@@ -330,6 +348,7 @@ const QUICK = ['restaurant', 'hotel', 'dentist', 'hair salon', 'plumber']
 export async function getSearchSuggestions() {
   'use cache'
   cacheLife('days')
+  cacheTag(DIRECTORY)
   const [groups, cities] = await Promise.all([getCategoryGroups(), getCities()])
   const rank = (name: string) => (QUICK.includes(name) ? QUICK.indexOf(name) : QUICK.length)
   return {
@@ -344,6 +363,7 @@ export async function getSearchSuggestions() {
 export async function getCategoryTiles(slugs: string[]) {
   'use cache'
   cacheLife('days')
+  cacheTag(DIRECTORY)
   const rows = await sql<{ slug: string; name: string; count: number; photo: string | null }>(
     `select c.slug, c.name, p.thumbnail photo,
        (select coalesce(sum(cc.businesses), 0)::int from city_category_counts cc where cc.category_id = c.id) count
@@ -371,6 +391,7 @@ export type SearchOptions = { q?: string; loc?: string; sort?: string; rating?: 
 export async function search({ q, loc, sort, rating, features = [], page = 1 }: SearchOptions) {
   'use cache'
   cacheLife('hours')
+  cacheTag(DIRECTORY)
   const what = terms(q), where = terms(loc)
 
   // "What" + "where" match, shared by the result query and the filter counts.
@@ -421,6 +442,7 @@ export const SITEMAP_SIZE = 45000
 export async function getSitemapPages() {
   'use cache'
   cacheLife('days')
+  cacheTag(DIRECTORY)
   const [cities, listings, areas] = await Promise.all([
     sql<{ slug: string }>(`select slug from cities order by id`),
     sql<{ path: string }>(
@@ -440,11 +462,13 @@ export async function getSitemapPages() {
 export async function getBusinessCount() {
   'use cache'
   cacheLife('days')
+  cacheTag(DIRECTORY)
   return (await sql<{ n: number }>(`select count(*)::int n from businesses`))[0].n
 }
 
 export async function getBusinessSlugs(offset: number, limit: number) {
   'use cache'
   cacheLife('days')
+  cacheTag(DIRECTORY)
   return (await sql<{ slug: string }>(`select slug from businesses order by id offset $1 limit $2`, [offset, limit])).map(r => r.slug)
 }

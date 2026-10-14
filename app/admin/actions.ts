@@ -1,7 +1,8 @@
 'use server'
 import { randomBytes } from 'node:crypto'
-import { refresh, revalidatePath, updateTag } from 'next/cache'
+import { refresh, updateTag } from 'next/cache'
 import { redirect } from 'next/navigation'
+import { DIRECTORY } from '@/lib/data'
 import { adminSql } from '@/lib/db'
 import { slugify } from '@/lib/utils'
 import { LISTING_RULES, check, websiteUrl } from '@/lib/validate'
@@ -60,17 +61,11 @@ export async function listingAction(fd: FormData) {
 }
 
 // Deletes a request, and its business with it if it was published (admin_remove_listing, a database function).
+// A published one shows on many pages (its own, lists, search, top picks), so every cached read is cleared, not a few
+// paths. That's this website only; the other websites drop it when their caches expire.
 async function remove(id: string) {
-  const [page] = await adminSql<{ path: string }>(
-    `select '/' || ci.slug || '/' || c.slug path from listing_requests r
-     join cities ci on ci.id = r.city_id join categories c on c.id = r.category_id where r.id = $1`,
-    [id],
-  )
   const [{ slug }] = await adminSql<{ slug: string | null }>('select admin_remove_listing($1) slug', [id])
-  if (slug) {
-    revalidatePath(`/biz/${slug}`) // gone from this website now; the others drop it when their pages refresh
-    if (page) revalidatePath(page.path)
-  }
+  if (slug) updateTag(DIRECTORY)
 }
 
 // The details an admin can change on a business sent in through the form, published or not, checked like the form.
@@ -91,7 +86,7 @@ export async function editListing(_: EditState, fd: FormData): Promise<EditState
     'select admin_edit_listing($1, $2, $3, $4, $5, $6) slug',
     [id, values.name, values.address, values.phone || null, websiteUrl(values.website), values.description || null],
   )
-  if (slug) revalidatePath(`/biz/${slug}`) // shows on this website now; the others pick it up when their pages refresh
+  if (slug) updateTag(DIRECTORY) // every page showing it, on this website; the others when their caches expire
   refresh()
   return { ok: true, message: 'Saved.' }
 }
@@ -107,11 +102,5 @@ async function publish(id: string, category: string) {
   )
   if (!r) return
   await adminSql('select publish_listing_request($1, $2)', [id, `${slugify(r.name) || 'business'}-${randomBytes(3).toString('hex')}`])
-  // Its city's page for that category shows it now, not after the daily refresh.
-  const [page] = await adminSql<{ path: string }>(
-    `select '/' || ci.slug || '/' || c.slug path from listing_requests r
-     join cities ci on ci.id = r.city_id join categories c on c.id = r.category_id where r.id = $1`,
-    [id],
-  )
-  if (page) revalidatePath(page.path)
+  updateTag(DIRECTORY) // its list, search and city pages show it now, not after the daily refresh
 }
