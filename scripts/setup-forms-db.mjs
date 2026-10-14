@@ -1,15 +1,15 @@
-// One-time database setup for the website's forms (new listings, claims, reviews) and its admin panel (/admin).
+// One-time database setup for the website's forms (new listings, claims, reviews) and the central admin tool.
 // Usage (from the project root): node scripts/setup-forms-db.mjs
 //
 // Uses the admin DATABASE_URL from .env.local, like the scraper; the website itself never sees it.
-// It creates two logins for the website and saves their URLs in .env.local:
-// - web_forms (WEB_FORMS_DATABASE_URL) can add rows but can't read them back or mark a listing paid or published.
-// - web_admin (WEB_ADMIN_DATABASE_URL), for the admin panel, can read form rows, change their status, delete them and
-//   publish a listing request. It can't change businesses any other way.
+// It creates two logins and saves their URLs in .env.local:
+// - web_forms (WEB_FORMS_DATABASE_URL), for this website, can add rows but can't read them back or mark a listing paid
+//   or published.
+// - web_admin (WEB_ADMIN_DATABASE_URL), for the central admin tool (the local-citation-admin repo, which keeps it in its
+//   own .env.local), can read form rows, change their status, delete them and publish a listing request. It can't
+//   change businesses any other way.
 // The read-only login (web_reader) may read reviews written on the site, minus emails and ones marked rejected, to show
-// them. It also makes ADMIN_SESSION_SECRET, which signs admin sign-ins; the admin email and password (ADMIN_EMAIL,
-// ADMIN_PASSWORD) you add to .env.local yourself, so they never end up in the code.
-// Safe to run again: tables and policies are created only if missing, and passwords are kept.
+// them. Safe to run again: tables and policies are created only if missing, and passwords are kept.
 import crypto from 'node:crypto';
 import fs from 'node:fs';
 import pg from 'pg';
@@ -118,7 +118,7 @@ grant execute on function public.admin_edit_listing(bigint, text, text, text, te
 
 const LOGINS = [
   ['web_forms', 'WEB_FORMS_DATABASE_URL', 'Website forms: insert-only login (new listings, claims, reviews)'],
-  ['web_admin', 'WEB_ADMIN_DATABASE_URL', 'Admin panel (/admin): reads, updates and deletes form submissions'],
+  ['web_admin', 'WEB_ADMIN_DATABASE_URL', 'Central admin tool (local-citation-admin): reads, updates and deletes form submissions'],
 ];
 
 // Adds KEY=value to .env.local, or replaces the line if it's there.
@@ -155,8 +155,6 @@ try {
   await db.query('commit');
 
   for (const [key, url, comment] of urls) setEnv(key, url, comment);
-  if (!process.env.ADMIN_SESSION_SECRET) setEnv('ADMIN_SESSION_SECRET', crypto.randomBytes(32).toString('base64url'), 'Signs admin panel sign-ins');
-  if (!process.env.ADMIN_EMAIL || !process.env.ADMIN_PASSWORD) console.log('Add ADMIN_EMAIL and ADMIN_PASSWORD to .env.local to sign in at /admin.');
   console.log('Forms database is ready.');
 } catch (err) {
   await db.query('rollback');

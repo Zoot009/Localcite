@@ -18,7 +18,7 @@ export default function RootLayout({ children }: LayoutProps<'/'>) {
     <html lang="en" className={`${jakarta.variable} h-full antialiased`}>
       <body className="flex min-h-full flex-col">
         {/* Each page brings its own header, <main> and footer: the home page its see-through header (app/page.tsx), the
-            rest the white bar (app/(site)/layout.tsx). The admin panel (app/admin) has its own bar and no footer. */}
+            rest the white bar (app/(site)/layout.tsx). */}
         {children}
       </body>
     </html>

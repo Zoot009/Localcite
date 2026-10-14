@@ -1,6 +1,7 @@
 // All directory data comes from Supabase (tables filled by the scrape.do pipeline).
-// Every read is cached for a day with 'use cache': the data only changes when the scraper runs, or when the admin
-// panel adds, edits or deletes a business, which clears every read tagged DIRECTORY so no page keeps the old version.
+// Every read is cached for a day with 'use cache': the data only changes when the scraper runs, or when the central
+// admin tool adds, edits or deletes a business. It then calls app/api/revalidate, which clears every read tagged
+// DIRECTORY so no page keeps the old version.
 import { cacheLife, cacheTag } from 'next/cache'
 import { sql } from './db'
 import { MIN_AREA_LISTINGS, MIN_CATEGORY_LISTINGS, PAGE_SIZE } from './site'

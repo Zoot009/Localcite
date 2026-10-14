@@ -5,7 +5,7 @@ const url = process.env.WEB_DATABASE_URL
 if (!url) throw new Error('Set WEB_DATABASE_URL in .env.local (read-only Supabase login)')
 
 // One pool per server process; dev hot-reload would otherwise open a new pool on every edit.
-const g = globalThis as unknown as { __pool?: Pool; __formsPool?: Pool; __adminPool?: Pool }
+const g = globalThis as unknown as { __pool?: Pool; __formsPool?: Pool }
 const pool = (g.__pool ??= createPool(url))
 
 function createPool(connectionString: string) {
@@ -39,12 +39,4 @@ export async function insert(text: string, params: unknown[] = []) {
   const formsUrl = process.env.WEB_FORMS_DATABASE_URL
   if (!formsUrl) throw new Error('Set WEB_FORMS_DATABASE_URL in .env.local (run: node scripts/setup-forms-db.mjs)')
   await (g.__formsPool ??= createPool(formsUrl)).query(text, params)
-}
-
-// The admin panel (app/admin) uses a third login, also made by scripts/setup-forms-db.mjs: it can read form submissions,
-// change their status, delete them and publish listings. Only call it after requireAdmin() (app/admin/auth.ts).
-export async function adminSql<T>(text: string, params: unknown[] = []): Promise<T[]> {
-  const adminUrl = process.env.WEB_ADMIN_DATABASE_URL
-  if (!adminUrl) throw new Error('WEB_ADMIN_DATABASE_URL is not set (scripts/setup-forms-db.mjs makes it)')
-  return (await (g.__adminPool ??= createPool(adminUrl)).query(text, params)).rows as T[]
 }
