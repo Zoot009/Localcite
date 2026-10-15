@@ -27,7 +27,7 @@ export async function ListingView({ listing, items, areas, area }: { listing: Li
     [
       `What are the best ${what} in ${place}?`,
       `Based on ratings and number of reviews, the top-rated ${what} in ${place} are ${list(
-        items.slice(0, 3).map(b => `${b.title}${b.rating ? ` (${b.rating.toFixed(1)}★ from ${b.reviews ?? 0} reviews)` : ''}`),
+        items.slice(0, 3).map(b => `${b.title}${b.rating ? ` (${b.rating.toFixed(1)}★)` : ''}`),
       )}.`,
     ],
     [`How many ${what} are there in ${place}?`, `${SITE.name} lists ${items.length} ${what} in ${place}${avg ? `, with an average rating of ${avg.toFixed(1)} out of 5` : ''}.`],

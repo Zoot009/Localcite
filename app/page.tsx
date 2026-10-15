@@ -43,9 +43,6 @@ export default async function Home() {
     getReviewStats(),
     ...PICKS.map(([, slug]) => getTopRated(8, undefined, [slug])),
   ])
-  // "105,821,615" → "100M+": rounded down to a headline number, like the stats strip.
-  const millions = reviews.total / 1e6
-  const reviewCount = `${millions >= 100 ? Math.floor(millions / 100) * 100 : millions >= 10 ? Math.floor(millions / 10) * 10 : Math.floor(millions)}M+`
   const stats = [
     { Icon: Store, value: '200,000+', label: 'businesses listed' },
     { Icon: MapPin, value: '500+', label: 'cities covered' },
@@ -89,7 +86,7 @@ export default async function Home() {
               <div className="mt-9 max-w-2xl lg:hidden">
                 <SearchForm variant="hero" suggest={suggest} />
               </div>
-              {/* Trust row: a few top-rated places, and the reviews behind every rating. */}
+              {/* Trust row: a few top-rated places, and their average rating on Google. */}
               <div className="mt-8 flex items-center gap-4">
                 <div className="flex shrink-0 -space-x-3">
                   {/* Five photos; three on phones, so the text beside them stays on one line each. */}
@@ -101,7 +98,7 @@ export default async function Home() {
                   <p className="flex items-center gap-2 text-sm font-semibold text-white">
                     <Stars rating={reviews.avg} size={15} /> {reviews.avg.toFixed(1)} average rating
                   </p>
-                  <p className="mt-0.5 text-sm text-brand-100/70">from {reviewCount} customer reviews</p>
+                  <p className="mt-0.5 text-sm text-brand-100/70">on Google, across {stats[0].value} listings</p>
                 </div>
               </div>
             </div>

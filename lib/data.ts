@@ -12,10 +12,14 @@ export const DIRECTORY = 'directory'
 
 // ---------- businesses ----------
 
+// site_reviews and site_rating: the reviews written on this site (this login doesn't see rejected ones). The site
+// shows that count, not Google's review_count.
 const BIZ = `b.id, b.slug, b.title, b.place_id, b.data_cid, b.city_id, ci.name city_name, ci.state city_state, ci.slug city_slug,
   b.area, b.area_slug, b.address, b.phone, b.website, b.rating, b.review_count, b.score, b.price, b.primary_type, b.types,
   b.description, b.user_review, b.operating_hours, b.service_options, b.extensions, b.latitude, b.longitude, b.thumbnail,
-  b.unclaimed_on_google`
+  b.unclaimed_on_google,
+  (select count(ur.id) from user_reviews ur where ur.business_id = b.id)::int site_reviews,
+  (select avg(ur.rating) from user_reviews ur where ur.business_id = b.id)::float8 site_rating`
 
 type Row = {
   id: string; slug: string; title: string; place_id: string | null; data_cid: string | null; city_id: string
@@ -24,7 +28,7 @@ type Row = {
   price: string | null; primary_type: string | null; types: string[] | null; description: string | null; user_review: string | null
   operating_hours: Record<string, string> | null; service_options: Record<string, boolean> | null
   extensions: Record<string, string[]>[] | null; latitude: number | null; longitude: number | null; thumbnail: string | null
-  unclaimed_on_google: boolean | null; niches?: string[]; niche_slugs?: string[]
+  unclaimed_on_google: boolean | null; site_reviews?: number; site_rating?: number | null; niches?: string[]; niche_slugs?: string[]
 }
 
 const u = <T,>(v: T | null) => v ?? undefined
@@ -52,6 +56,8 @@ function toBusiness(r: Row): Business {
     website: u(r.website),
     rating: r.rating ? Number(r.rating) : undefined,
     reviews: r.review_count,
+    siteReviews: r.site_reviews ?? 0,
+    siteRating: r.site_rating ?? undefined,
     score: Number(r.score),
     price: cleanPrice(r.price),
     type: u(r.primary_type),
@@ -312,17 +318,17 @@ export async function getPopularNiches(n: number) {
 
 // Home page photo tiles, in the order given: each category's place count and a photo of its most-reviewed place whose
 // own main type matches the category (so a hotel that is also listed as a bar doesn't stand in for bars).
-// The ratings behind the directory, for the home page: how many customer reviews they come from, and their average
-// (each place's rating weighted by its number of reviews).
+// The directory's average Google rating, for the home page (each place's rating weighted by its number of reviews).
+// Not the number of reviews: the site only shows counts of reviews written on it.
 export async function getReviewStats() {
   'use cache'
   cacheLife('days')
   cacheTag(DIRECTORY)
-  const [r] = await sql<{ total: string; avg: number }>(
-    `select sum(review_count)::bigint total, (sum(rating * review_count) / nullif(sum(review_count), 0))::float8 avg
+  const [r] = await sql<{ avg: number }>(
+    `select (sum(rating * review_count) / nullif(sum(review_count), 0))::float8 avg
      from businesses where rating is not null and review_count > 0`,
   )
-  return { total: Number(r.total), avg: r.avg }
+  return { avg: r.avg }
 }
 
 // Reviews people wrote on this site for one business, newest first; ones marked rejected in Supabase are hidden.

@@ -60,6 +60,9 @@ export type Business = Place & {
   nicheSlugs: string[]
   categories: string[] // Google's own types, for display
   score: number // rating weighted by review count, for "best of" ordering
+  // Reviews written on this site (user_reviews, minus rejected ones): the count shown, not Google's.
+  siteReviews: number
+  siteRating?: number
 }
 
 export type Listing = { city: string; citySlug: string; niche: string; nicheSlug: string; items: Business[] }

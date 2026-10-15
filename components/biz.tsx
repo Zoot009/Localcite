@@ -6,13 +6,19 @@ import { Avatar, BizImage, Stars } from './ui'
 
 const n = (x = 0) => x.toLocaleString('en-US')
 
+// The stars: Google's rating, or for a business without one, the average of the reviews written here.
+export const starsOf = (b: Business) => b.rating ?? b.siteRating
+// "1 review", "12 reviews": only the reviews written on this site, never Google's count.
+export const siteReviewCount = (b: Business) => (b.siteReviews ? `${n(b.siteReviews)} ${b.siteReviews === 1 ? 'review' : 'reviews'}` : '')
+
 export function RatingLine({ b, size = 16, light = false }: { b: Business; size?: number; light?: boolean }) {
-  if (!b.rating) return <p className={`text-sm ${light ? 'text-white/80' : 'text-zinc-500'}`}>No reviews yet</p>
+  const rating = starsOf(b)
+  if (!rating) return <p className={`text-sm ${light ? 'text-white/80' : 'text-zinc-500'}`}>No reviews yet</p>
   return (
     <div className="flex flex-wrap items-center gap-x-2 gap-y-1 text-sm">
-      <Stars rating={b.rating} size={size} />
-      <span className={`font-semibold ${light ? 'text-white' : 'text-zinc-900'}`}>{b.rating.toFixed(1)}</span>
-      <span className={light ? 'text-white/80' : 'text-zinc-500'}>({n(b.reviews)} reviews)</span>
+      <Stars rating={rating} size={size} />
+      <span className={`font-semibold ${light ? 'text-white' : 'text-zinc-900'}`}>{rating.toFixed(1)}</span>
+      {b.siteReviews > 0 && <span className={light ? 'text-white/80' : 'text-zinc-500'}>({siteReviewCount(b)})</span>}
     </div>
   )
 }
@@ -70,16 +76,16 @@ export function BizCard({ b }: { b: Business }) {
     <Link href={`/biz/${b.slug}`} className="group block min-w-0 rounded-2xl focus-visible:outline-2 focus-visible:outline-offset-4 focus-visible:outline-brand-600">
       <div className="relative aspect-[4/3] overflow-hidden rounded-2xl bg-zinc-100 ring-1 ring-zinc-900/5">
         <BizImage biz={b} className="h-full w-full transition duration-500 group-hover:scale-105" />
-        {b.rating ? (
+        {starsOf(b) ? (
           <span className="absolute top-3 left-3 inline-flex items-center gap-1 rounded-full bg-white/95 px-2.5 py-1 text-xs font-semibold text-zinc-900 shadow-sm backdrop-blur">
-            <StarIcon width={12} height={12} className="text-star" /> {b.rating.toFixed(1)}
+            <StarIcon width={12} height={12} className="text-star" /> {starsOf(b)!.toFixed(1)}
           </span>
         ) : null}
       </div>
       <div className="mt-3 px-0.5">
         <h3 className="truncate font-semibold text-zinc-900 group-hover:text-brand-700">{b.title}</h3>
         <p className="mt-0.5 truncate text-sm text-zinc-500">{[b.categories[0], b.area ?? cityName(b.city)].filter(Boolean).join(' · ')}</p>
-        {b.reviews ? <p className="mt-0.5 text-sm text-zinc-500">{n(b.reviews)} reviews</p> : null}
+        {b.siteReviews ? <p className="mt-0.5 text-sm text-zinc-500">{siteReviewCount(b)}</p> : null}
       </div>
     </Link>
   )
@@ -170,11 +176,11 @@ export function RatingSummary({ b, counts }: { b: Business; counts: number[] }) 
   return (
     <div className={hasBreakdown ? 'grid gap-6 sm:grid-cols-[auto_1fr] sm:items-center sm:gap-10' : ''}>
       <div>
-        <p className="text-5xl font-bold tracking-tight">{(b.rating ?? 0).toFixed(1)}</p>
+        <p className="text-5xl font-bold tracking-tight">{(starsOf(b) ?? 0).toFixed(1)}</p>
         <div className="mt-2">
-          <Stars rating={b.rating} size={20} />
+          <Stars rating={starsOf(b)} size={20} />
         </div>
-        <p className="mt-1 text-sm text-zinc-500">{n(b.reviews)} reviews on Google</p>
+        <p className="mt-1 text-sm text-zinc-500">{b.rating ? 'Rating on Google' : 'From the reviews below'}</p>
       </div>
       {hasBreakdown && <ul className="space-y-1.5">
         {counts.map((c, i) => (

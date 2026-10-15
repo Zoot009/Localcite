@@ -7,7 +7,7 @@ import type { Metadata } from 'next'
 import Link from 'next/link'
 import type { ReactNode } from 'react'
 import { notFound } from 'next/navigation'
-import { BizCard, RatingLine, RatingSummary, ReviewCard } from '@/components/biz'
+import { BizCard, RatingLine, RatingSummary, ReviewCard, starsOf } from '@/components/biz'
 import { HoursTable, ShareButton } from '@/components/client'
 import { ResultsMap } from '@/components/ResultsMap'
 import { DirectionsIcon, ExternalIcon, GlobeIcon, PencilIcon, PhoneIcon, PinIcon, ShieldIcon, StarIcon } from '@/components/icons'
@@ -177,13 +177,19 @@ export default async function BizPage({ params }: PageProps<'/biz/[slug]'>) {
   const [listing, areas, similar, siteReviews] = await Promise.all([
     getListing(b.citySlug, nicheSlug), getListingAreas(b.citySlug, nicheSlug), getSimilar(b, 4), getSiteReviews(b.key),
   ])
+  // The review count and average from the reviews just read (getBusiness is cached for a day), so a new one counts
+  // straight away. ponytail: getSiteReviews reads at most 50, so the count stops at 50; count in SQL past that.
+  const rated = {
+    ...b, siteReviews: siteReviews.length,
+    siteRating: siteReviews.length ? siteReviews.reduce((sum, r) => sum + r.rating, 0) / siteReviews.length : undefined,
+  }
   const areaPage = b.areaSlug && areas.some(a => a.slug === b.areaSlug)
   const nicheHref = `/${b.citySlug}/${nicheSlug}`
 
   return (
     <>
       <Hero
-        b={b}
+        b={rated}
         crumbs={[
           { name: 'Home', href: '/' },
           { name: town, href: `/${b.citySlug}` },
@@ -236,8 +242,8 @@ export default async function BizPage({ params }: PageProps<'/biz/[slug]'>) {
               </Section>
 
               <Section id="reviews" title="Ratings & reviews">
-                {b.rating ? (
-                  <RatingSummary b={b} counts={ratingBreakdown(b)} />
+                {starsOf(rated) ? (
+                  <RatingSummary b={rated} counts={ratingBreakdown(b)} />
                 ) : (
                   <p className="text-zinc-600">No ratings yet.</p>
                 )}
