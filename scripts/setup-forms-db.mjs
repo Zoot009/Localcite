@@ -114,6 +114,56 @@ revoke all on function public.admin_edit_listing(bigint, text, text, text, text,
   from public, anon, authenticated;
 grant execute on function public.admin_edit_listing(bigint, text, text, text, text, text), public.admin_remove_listing(bigint)
   to web_admin;
+
+-- Admin panel: add a business by hand and publish it on the websites picked, all or none. A business lives on one
+-- website (business_sites), so each gets its own copy, made from its own listing request like the add-a-business
+-- form's: each can be edited or deleted from the Listings inbox. details holds the form's fields plus what the
+-- form doesn't ask for (photo, price, map pin, opening hours, amenities…); a missing one keeps what publishing set.
+-- Returns the websites' domains.
+drop function if exists public.admin_add_listing(smallint[], text, text, bigint, bigint, text, text, text, text, text, text,
+  text, text, text); -- earlier versions, one argument per field
+drop function if exists public.admin_add_listing(smallint[], text, text, bigint, bigint, text, text, text, text, text, text,
+  text, text, text, text);
+create or replace function public.admin_add_listing(site_ids smallint[], base_slug text, details jsonb)
+returns text[]
+language plpgsql security definer set search_path = public as $$
+declare s record; req_id bigint; b_id bigint; domains text[] := '{}';
+begin
+  for s in select id, domain from sites where id = any(site_ids) order by id loop
+    insert into listing_requests (plan, status, name, category_id, city_id, address, area, phone, website, hours,
+      description, submitter_name, submitter_email, relation)
+    values ('free', 'approved', details->>'name', (details->>'category_id')::bigint, (details->>'city_id')::bigint,
+      details->>'address', details->>'area', details->>'phone', details->>'website', details->>'hours',
+      details->>'description', details->>'contact_name', details->>'email', details->>'relation')
+    returning id into req_id;
+    perform publish_listing_request(req_id, base_slug || '-' || substr(md5(random()::text), 1, 6));
+    select business_id into b_id from listing_requests where id = req_id;
+    update businesses set
+      thumbnail = coalesce(details->>'thumbnail', thumbnail),
+      price = coalesce(details->>'price', price),
+      primary_type = coalesce(details->>'primary_type', primary_type),
+      types = case when details ? 'types' then array(select jsonb_array_elements_text(details->'types')) else types end,
+      area_slug = coalesce(area_slug, details->>'area_slug'),
+      latitude = coalesce((details->>'latitude')::float8, latitude),
+      longitude = coalesce((details->>'longitude')::float8, longitude),
+      operating_hours = coalesce(details->'operating_hours', operating_hours),
+      extensions = coalesce(details->'extensions', extensions)
+    where id = b_id;
+    -- Its category put it on a website by turn (assign_business_site): move it to this one.
+    insert into business_sites (business_id, site_id) values (b_id, s.id)
+    on conflict (business_id) do update set site_id = excluded.site_id;
+    domains := domains || s.domain;
+  end loop;
+  return domains;
+end $$;
+revoke all on function public.admin_add_listing(smallint[], text, jsonb) from public, anon, authenticated;
+grant execute on function public.admin_add_listing(smallint[], text, jsonb) to web_admin;
+
+-- Photos the admin panel adds: a public bucket, so the websites can show them. The admin panel uploads with the
+-- project's service key (SUPABASE_SERVICE_ROLE_KEY there); nobody else can write to it.
+insert into storage.buckets (id, name, public, file_size_limit, allowed_mime_types)
+values ('business-photos', 'business-photos', true, 5242880, array['image/jpeg', 'image/png', 'image/webp'])
+on conflict (id) do nothing;
 `;
 
 const LOGINS = [
