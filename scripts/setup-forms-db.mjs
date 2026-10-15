@@ -159,6 +159,41 @@ end $$;
 revoke all on function public.admin_add_listing(smallint[], text, jsonb) from public, anon, authenticated;
 grant execute on function public.admin_add_listing(smallint[], text, jsonb) to web_admin;
 
+-- Admin panel: the edit page of a published listing (added by hand or sent in through a form). Each of its copies picked
+-- (req_ids) gets the same details, in the shape admin_add_listing takes; a field left out is cleared. Its list (business
+-- type in its city) follows; its website stays. Returns the websites the copies are on.
+create or replace function public.admin_update_listing(req_ids bigint[], details jsonb)
+returns text[]
+language plpgsql security definer set search_path = public as $$
+declare r record; domains text[] := '{}';
+begin
+  for r in select lr.id, lr.business_id, st.domain from listing_requests lr
+      join business_sites bs on bs.business_id = lr.business_id join sites st on st.id = bs.site_id
+      where lr.id = any(req_ids) order by st.id loop
+    update listing_requests set name = details->>'name', category_id = (details->>'category_id')::bigint,
+      city_id = (details->>'city_id')::bigint, address = details->>'address', area = details->>'area',
+      phone = details->>'phone', website = details->>'website', hours = details->>'hours',
+      description = details->>'description', submitter_name = details->>'contact_name',
+      submitter_email = details->>'email', relation = details->>'relation'
+    where id = r.id;
+    update businesses set title = details->>'name', city_id = (details->>'city_id')::bigint, area = details->>'area',
+      area_slug = details->>'area_slug', address = details->>'address', phone = details->>'phone',
+      website = details->>'website', description = details->>'description', thumbnail = details->>'thumbnail',
+      price = details->>'price', primary_type = details->>'primary_type',
+      types = nullif(array(select jsonb_array_elements_text(coalesce(details->'types', '[]'))), '{}'),
+      latitude = (details->>'latitude')::float8, longitude = (details->>'longitude')::float8,
+      operating_hours = details->'operating_hours', extensions = details->'extensions'
+    where id = r.business_id;
+    delete from business_categories where business_id = r.business_id;
+    insert into business_categories (business_id, category_id, city_id)
+    values (r.business_id, (details->>'category_id')::bigint, (details->>'city_id')::bigint);
+    domains := domains || r.domain;
+  end loop;
+  return domains;
+end $$;
+revoke all on function public.admin_update_listing(bigint[], jsonb) from public, anon, authenticated;
+grant execute on function public.admin_update_listing(bigint[], jsonb) to web_admin;
+
 -- Photos the admin panel adds: a public bucket, so the websites can show them. The admin panel uploads with the
 -- project's service key (SUPABASE_SERVICE_ROLE_KEY there); nobody else can write to it.
 insert into storage.buckets (id, name, public, file_size_limit, allowed_mime_types)
